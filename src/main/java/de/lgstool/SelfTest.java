@@ -71,6 +71,8 @@ public final class SelfTest {
                 c.runLgs("a", "saveplot(selftest_plot);");
                 c.runLgs("a", "savelog(selftest_log);");
                 c.runLgs("a", "copylog();");
+                c.runLgs("a", "labels();");
+                c.runLgs("a", "labels();");
                 layout(scene);
 
                 // 1 variable: number line.

@@ -19,7 +19,9 @@ public class App extends Application {
     @Override
     public void start(Stage stage) {
         AppController controller = new AppController(stage);
-        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        // Full screen bounds (incl. the taskbar area) so true fullscreen has no
+        // size mismatch; maximized is the fallback when fullscreen is toggled off.
+        Rectangle2D bounds = Screen.getPrimary().getBounds();
         Scene scene = new Scene(controller.root(), bounds.getWidth(), bounds.getHeight());
         scene.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ESCAPE) {
@@ -31,19 +33,12 @@ public class App extends Application {
         stage.setTitle(I18n.t("app.title"));
         stage.setScene(scene);
         stage.setFullScreenExitHint("ESC / F11");
-
-        // Fill the whole primary screen, positioned at its top-left corner.
-        stage.setX(bounds.getMinX());
-        stage.setY(bounds.getMinY());
-        stage.setWidth(bounds.getWidth());
-        stage.setHeight(bounds.getHeight());
         stage.setMaximized(true);
         stage.show();
 
-        // Applying fullscreen after show() is more reliable on Windows.
-        if (Settings.startFullscreen) {
-            stage.setFullScreen(true);
-        }
+        // Applying fullscreen after show() is more reliable on Windows; this hides
+        // the taskbar and covers the whole screen.
+        stage.setFullScreen(Settings.startFullscreen);
     }
 
     public static void main(String[] args) {

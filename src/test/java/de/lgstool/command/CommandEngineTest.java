@@ -412,5 +412,9 @@ class CommandEngineTest {
         public void savePlot(String path) {
             savedPlotPath = path;
         }
+
+        @Override
+        public void toggleLabels(String name) {
+        }
     }
 }

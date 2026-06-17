@@ -6,25 +6,29 @@ import de.lgstool.model.Lgs;
 import java.util.List;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.stage.Stage;
 
-/** The LGS detail window: editable matrix, solution log and an [LGS] command line. */
+/**
+ * The LGS detail view: editable matrix, solution log and an [LGS] command line.
+ *
+ * <p>This is a panel, not a top-level window. The {@link AppController} swaps it
+ * into the single application window's scene, so opening a system does not spawn
+ * a second OS window. "← Overview" returns to the main screen.
+ */
 public final class LgsWindow {
 
-    private final Stage stage = new Stage();
     private final AppController controller;
     private final MatrixView matrixView;
     private final LogPane logPane = new LogPane(I18n.t("lgs.log"));
     private final Label titleLabel = new Label();
+    private final BorderPane root = new BorderPane();
     private Lgs lgs;
 
     public LgsWindow(AppController controller) {
@@ -33,16 +37,18 @@ public final class LgsWindow {
 
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + Theme.ACCENT_PETROL + ";");
 
+        Button back = action(I18n.t("lgs.back"), "close();");
+        back.setStyle("-fx-background-color: " + Theme.ACCENT_PETROL + "; -fx-text-fill: white; -fx-font-weight: bold;");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox top = new HBox(10, titleLabel, spacer,
+        HBox top = new HBox(10, back, titleLabel, spacer,
                 action(I18n.t("lgs.solve"), "solve();"),
                 action(I18n.t("lgs.check"), "verify();"),
                 action(I18n.t("lgs.undo"), "undo();"),
                 action(I18n.t("lgs.fractions"), "frac();"),
                 action(I18n.t("lgs.decimals"), "dec();"),
-                action(I18n.t("lgs.center"), "fit();"),
-                action(I18n.t("lgs.close"), "close();"));
+                action(I18n.t("lgs.center"), "fit();"));
         top.setAlignment(Pos.CENTER_LEFT);
         top.setPadding(new Insets(10));
         top.setStyle("-fx-background-color: derive(" + Theme.ACCENT_SAGE + ", 50%);");
@@ -61,36 +67,21 @@ public final class LgsWindow {
         matrixView.prefWidthProperty().bind(matrixWrap.widthProperty().multiply(0.7));
         matrixView.prefHeightProperty().bind(matrixWrap.heightProperty().multiply(0.7));
 
-        BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: " + Theme.BACKGROUND + ";");
         root.setTop(top);
         root.setCenter(matrixWrap);
         root.setRight(logPane);
         root.setBottom(bar);
-
-        Scene scene = new Scene(root, 1040, 700);
-        scene.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ESCAPE) {
-                stage.setFullScreen(false);
-            } else if (e.getCode() == KeyCode.F11) {
-                stage.setFullScreen(!stage.isFullScreen());
-            }
-        });
-        stage.setTitle("LGS");
-        stage.setScene(scene);
-        stage.setMaximized(true);
-        stage.setFullScreenExitHint(I18n.t("lgs.close") + " · ESC / F11");
-        stage.setFullScreen(true);
-        stage.setOnCloseRequest(e -> {
-            e.consume();
-            controller.detailClosed(this);
-        });
     }
 
     private Button action(String label, String command) {
         Button b = new Button(label);
         b.setOnAction(e -> controller.runLgs(lgs.name(), command));
         return b;
+    }
+
+    public Parent getRoot() {
+        return root;
     }
 
     public String logText() {
@@ -100,7 +91,6 @@ public final class LgsWindow {
     public void bind(Lgs lgs) {
         this.lgs = lgs;
         titleLabel.setText("LGS: " + lgs.name());
-        stage.setTitle("LGS: " + lgs.name());
         matrixView.resetPan();
         matrixView.render(lgs);
     }
@@ -108,7 +98,6 @@ public final class LgsWindow {
     public void refresh(Lgs lgs) {
         this.lgs = lgs;
         titleLabel.setText("LGS: " + lgs.name());
-        stage.setTitle("LGS: " + lgs.name());
         matrixView.render(lgs);
     }
 
@@ -118,16 +107,5 @@ public final class LgsWindow {
 
     public void log(List<String> lines) {
         logPane.append(lines);
-    }
-
-    public void showIfNeeded() {
-        if (!stage.isShowing()) {
-            stage.show();
-        }
-        stage.toFront();
-    }
-
-    public void hide() {
-        stage.hide();
     }
 }

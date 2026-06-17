@@ -132,7 +132,8 @@ public final class GlossaryDialog {
                 new Row("run(datei);", "g.run", "HAUPT/LGS"),
                 new Row("examples([name]);", "g.examples", "HAUPT"),
                 new Row("savelog(name); / copylog();", "g.savelog", "LGS"),
-                new Row("saveplot(name);", "g.saveplot", "LGS")
+                new Row("saveplot(name);", "g.saveplot", "LGS"),
+                new Row("labels();", "g.labels", "LGS")
         };
     }
 }

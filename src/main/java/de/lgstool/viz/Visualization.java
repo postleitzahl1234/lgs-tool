@@ -27,6 +27,9 @@ import javafx.scene.shape.Box;
 import javafx.scene.shape.CullFace;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.Sphere;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.scene.shape.TriangleMesh;
 import javafx.scene.transform.Rotate;
@@ -65,6 +68,7 @@ public final class Visualization extends StackPane {
     private double vy0 = -DEFAULT_Y;
     private double vy1 = DEFAULT_Y;
     private boolean customRanges;
+    private boolean showLabels = true;
 
     // 3D extents.
     private double zMin = -DEFAULT_X;
@@ -219,6 +223,19 @@ public final class Visualization extends StackPane {
         return customRanges;
     }
 
+    public void setShowLabels(boolean show) {
+        this.showLabels = show;
+        redraw();
+    }
+
+    public void toggleLabels() {
+        setShowLabels(!showLabels);
+    }
+
+    public boolean isShowLabels() {
+        return showLabels;
+    }
+
     public void highlight(int rowOneBased, String hex) {
         this.highlightRow = rowOneBased;
         this.highlightColor = hex == null ? Color.web("#D7263D") : Color.web(hex.startsWith("#") ? hex : "#" + hex);
@@ -370,10 +387,13 @@ public final class Visualization extends StackPane {
             g.setFill(Color.web(Theme.TEXT));
             g.fillText(String.format(Locale.US, "(%.3g, %.3g)", x, y), px + 10, py - 10);
         }
+        String[] names = lgs.variableNames();
+        drawAxisNames(g, w, h, names[0], names.length > 1 ? names[1] : null);
         drawLegend(g, w, h, lgs);
     }
 
     private void drawLegend(GraphicsContext g, double w, double h, Lgs lgs) {
+        g.setFont(Font.font("Consolas", 12));
         int n = Math.min(lgs.height(), 8);
         if (n == 0) {
             return;
@@ -443,17 +463,38 @@ public final class Visualization extends StackPane {
         g.setLineWidth(1.5);
         g.strokeLine(0, sy(0, h), w, sy(0, h));
         g.strokeLine(sx(0, w), 0, sx(0, w), h);
-        g.setFill(Color.web(Theme.TEXT, 0.6));
-        for (double x = Math.ceil(vx0 / stepX) * stepX; x <= vx1; x += stepX) {
-            if (Math.abs(x) > 1e-9) {
-                g.fillText(trim(x), sx(x, w) + 2, sy(0, h) + 14);
+        if (showLabels) {
+            g.setFill(Color.web(Theme.TEXT, 0.6));
+            for (double x = Math.ceil(vx0 / stepX) * stepX; x <= vx1; x += stepX) {
+                if (Math.abs(x) > 1e-9) {
+                    g.fillText(trim(x), sx(x, w) + 2, sy(0, h) + 14);
+                }
+            }
+            for (double y = Math.ceil(vy0 / stepY) * stepY; y <= vy1; y += stepY) {
+                if (Math.abs(y) > 1e-9) {
+                    g.fillText(trim(y), sx(0, w) + 4, sy(y, h) - 2);
+                }
             }
         }
-        for (double y = Math.ceil(vy0 / stepY) * stepY; y <= vy1; y += stepY) {
-            if (Math.abs(y) > 1e-9) {
-                g.fillText(trim(y), sx(0, w) + 4, sy(y, h) - 2);
-            }
+    }
+
+    private void drawAxisNames(GraphicsContext g, double w, double h, String xName, String yName) {
+        if (!showLabels) {
+            return;
         }
+        g.setFill(Color.web(Theme.ACCENT_PETROL));
+        g.setFont(Font.font("System", FontWeight.BOLD, 15));
+        double axisY = clamp(sy(0, h), 14, h - 4);
+        g.setTextAlign(TextAlignment.RIGHT);
+        g.setTextBaseline(VPos.BOTTOM);
+        g.fillText(xName, w - 6, axisY - 4);
+        double axisX = clamp(sx(0, w), 4, w - 24);
+        g.setTextAlign(TextAlignment.LEFT);
+        g.setTextBaseline(VPos.TOP);
+        if (yName != null) {
+            g.fillText(yName, axisX + 6, 4);
+        }
+        g.setFont(Font.font("Consolas", 13));
     }
 
     private static double niceStep(double raw) {
@@ -486,7 +527,9 @@ public final class Visualization extends StackPane {
         for (double x = Math.ceil(vx0 / stepX) * stepX; x <= vx1; x += stepX) {
             double px = sx(x, w);
             g.strokeLine(px, cy - 6, px, cy + 6);
-            g.fillText(trim(x), px - 6, cy + 22);
+            if (showLabels) {
+                g.fillText(trim(x), px - 6, cy + 22);
+            }
         }
         for (int r = 1; r <= lgs.height(); r++) {
             Fraction[] row = lgs.row(r);
@@ -508,6 +551,15 @@ public final class Visualization extends StackPane {
             g.setFill(Color.web(Theme.TEXT));
             g.fillText(lgs.variableNames()[0] + " = " + String.format(Locale.US, "%.4g", x), px + 10, cy - 12);
         }
+        if (showLabels) {
+            g.setFill(Color.web(Theme.ACCENT_PETROL));
+            g.setFont(Font.font("System", FontWeight.BOLD, 15));
+            g.setTextAlign(TextAlignment.RIGHT);
+            g.setTextBaseline(VPos.BOTTOM);
+            g.fillText(lgs.variableNames()[0], w - 6, cy - 6);
+            g.setTextAlign(TextAlignment.LEFT);
+            g.setTextBaseline(VPos.BASELINE);
+        }
         drawLegend(g, w, h, lgs);
     }
 
@@ -524,6 +576,12 @@ public final class Visualization extends StackPane {
         addAxis(world, new Point3D(1, 0, 0), Color.web("#B23A48"));
         addAxis(world, new Point3D(0, 1, 0), Color.web("#2E7D32"));
         addAxis(world, new Point3D(0, 0, 1), Color.web("#1565C0"));
+        if (showLabels) {
+            String[] names = lgs.variableNames();
+            addAxisLabel(world, 8, 0, 0, names.length > 0 ? names[0] : "x", Color.web("#B23A48"));
+            addAxisLabel(world, 0, 8, 0, names.length > 1 ? names[1] : "y", Color.web("#2E7D32"));
+            addAxisLabel(world, 0, 0, 8, names.length > 2 ? names[2] : "z", Color.web("#1565C0"));
+        }
 
         for (int r = 1; r <= lgs.height(); r++) {
             Fraction[] row = lgs.row(r);
@@ -553,6 +611,16 @@ public final class Visualization extends StackPane {
         subScene.setFill(Color.web(Theme.BACKGROUND));
         subScene.setCamera(camera);
         threeDHolder.getChildren().setAll(subScene);
+    }
+
+    private void addAxisLabel(Group world, double dx, double dy, double dz, String text, Color color) {
+        Text t = new Text(text);
+        t.setFill(color);
+        t.setFont(Font.font(22));
+        t.setTranslateX(dx * scale3d);
+        t.setTranslateY(-dy * scale3d);
+        t.setTranslateZ(dz * scale3d);
+        world.getChildren().add(t);
     }
 
     private void addAxis(Group world, Point3D dir, Color color) {

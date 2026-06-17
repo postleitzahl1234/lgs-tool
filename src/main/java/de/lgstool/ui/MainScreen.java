@@ -83,8 +83,10 @@ public final class MainScreen {
         stop.setOnAction(e -> viz.stopAnimation());
         Button axes = controlButton("⚙");
         axes.setOnAction(e -> controller.openAxes());
+        Button labels = controlButton("#");
+        labels.setOnAction(e -> viz.toggleLabels());
 
-        VBox controls = new VBox(6, zoomIn, zoomOut, fit, stop, axes);
+        VBox controls = new VBox(6, zoomIn, zoomOut, fit, stop, axes, labels);
         controls.setAlignment(Pos.TOP_RIGHT);
         controls.setPadding(new Insets(14));
         controls.setMaxWidth(Double.NEGATIVE_INFINITY);

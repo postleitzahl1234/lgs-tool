@@ -28,7 +28,7 @@ public final class NewLgsDialog {
         stage.setAlwaysOnTop(true);
         stage.setTitle(I18n.t("new.title"));
 
-        TextField name = new TextField("lgs1");
+        TextField name = new TextField(controller.nextDefaultName());
         Spinner<Integer> width = new Spinner<>(1, 100, 3);
         Spinner<Integer> height = new Spinner<>(1, 100, 3);
         width.setEditable(true);

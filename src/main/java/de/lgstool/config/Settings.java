@@ -9,7 +9,11 @@ public final class Settings {
     /** Default display mode for newly created systems (true = fractions). */
     public static boolean fractionDefault = true;
 
-    /** Whether the application starts in fullscreen. */
+    /**
+     * Whether the application starts in exclusive fullscreen (default true): the app
+     * covers the whole screen and the Windows taskbar is hidden. Toggle with F11;
+     * leaving fullscreen falls back to a maximized window (taskbar visible).
+     */
     public static boolean startFullscreen = true;
 
     /** Number of significant digits used when displaying decimals. */

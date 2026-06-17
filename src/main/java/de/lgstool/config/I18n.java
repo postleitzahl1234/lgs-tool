@@ -83,6 +83,7 @@ public final class I18n {
         m.put("lgs.center", "Zentrieren");
         m.put("lgs.axes", "Achsen…");
         m.put("lgs.close", "Schließen");
+        m.put("lgs.back", "← Übersicht");
         m.put("lgs.log", "Lösungen / Log");
         m.put("matrix.empty", "Leeres LGS – mit add(...) Gleichungen eintragen.");
         m.put("settings.title", "Einstellungen");
@@ -105,6 +106,7 @@ public final class I18n {
         m.put("new.name", "Name:");
         m.put("new.width", "Variablen (Breite):");
         m.put("new.height", "Zeilen (Höhe):");
+        m.put("new.defaultPrefix", "lgs");
         m.put("glossary.title", "Glossar — Befehlsübersicht");
         m.put("glossary.header", "Alle Befehle. [HAUPT] = Hauptbildschirm, [LGS] = LGS-Fenster.");
         m.put("glossary.colCmd", "Befehl");
@@ -237,6 +239,7 @@ public final class I18n {
         m.put("m.logCopied", "Log in die Zwischenablage kopiert.");
         m.put("m.logSaved", "Log gespeichert: {0}");
         m.put("m.plotSaved", "Diagramm gespeichert: {0}");
+        m.put("m.labelsToggled", "Achsenbeschriftung umgeschaltet.");
         m.put("m.expectsArgs", "''{0}'' erwartet {1} Argument(e), erhalten {2}.");
         m.put("m.notInt", "{0} muss eine ganze Zahl sein: ''{1}''.");
         m.put("m.notNumber", "{0} ist keine gültige Zahl: ''{1}''.");
@@ -314,6 +317,7 @@ public final class I18n {
         m.put("g.savelog", "Speichert das Log in eine Datei.");
         m.put("g.copylog", "Kopiert das Log in die Zwischenablage.");
         m.put("g.saveplot", "Speichert das Koordinatensystem als PNG.");
+        m.put("g.labels", "Schaltet die Achsenbeschriftung (Zahlen + Namen) um.");
     }
 
     private static Map<String, String> english() {
@@ -343,6 +347,7 @@ public final class I18n {
         m.put("lgs.center", "Center");
         m.put("lgs.axes", "Axes…");
         m.put("lgs.close", "Close");
+        m.put("lgs.back", "← Overview");
         m.put("lgs.log", "Solutions / Log");
         m.put("matrix.empty", "Empty system – add equations with add(...).");
         m.put("settings.title", "Settings");
@@ -365,6 +370,7 @@ public final class I18n {
         m.put("new.name", "Name:");
         m.put("new.width", "Variables (width):");
         m.put("new.height", "Rows (height):");
+        m.put("new.defaultPrefix", "matrix");
         m.put("glossary.title", "Glossary — Command reference");
         m.put("glossary.header", "All commands. [HAUPT] = main screen, [LGS] = system window.");
         m.put("glossary.colCmd", "Command");
@@ -497,6 +503,7 @@ public final class I18n {
         m.put("m.logCopied", "Log copied to clipboard.");
         m.put("m.logSaved", "Log saved: {0}");
         m.put("m.plotSaved", "Plot saved: {0}");
+        m.put("m.labelsToggled", "Axis labels toggled.");
         m.put("m.expectsArgs", "''{0}'' expects {1} argument(s), got {2}.");
         m.put("m.notInt", "{0} must be an integer: ''{1}''.");
         m.put("m.notNumber", "{0} is not a valid number: ''{1}''.");
@@ -574,5 +581,6 @@ public final class I18n {
         m.put("g.savelog", "Saves the log to a file.");
         m.put("g.copylog", "Copies the log to the clipboard.");
         m.put("g.saveplot", "Saves the coordinate system as PNG.");
+        m.put("g.labels", "Toggles axis labels (numbers + names).");
     }
 }

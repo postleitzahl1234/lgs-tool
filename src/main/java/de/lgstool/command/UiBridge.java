@@ -45,6 +45,9 @@ public interface UiBridge {
     /** Save a snapshot of the coordinate system to the given image file path. */
     void savePlot(String path);
 
+    /** Toggle axis labels (tick numbers and variable names) in the visualization. */
+    void toggleLabels(String name);
+
     UiBridge NONE = new UiBridge() {
         @Override
         public void systemsChanged() {
@@ -92,6 +95,10 @@ public interface UiBridge {
 
         @Override
         public void savePlot(String path) {
+        }
+
+        @Override
+        public void toggleLabels(String name) {
         }
     };
 }

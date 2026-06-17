@@ -30,6 +30,9 @@ public final class AppController implements UiBridge {
     private MainScreen mainScreen;
     private LgsWindow detailWindow;
 
+    /** System shown in the coordinate system; persists after its window closes. */
+    private String vizName;
+
     public AppController(Stage primaryStage) {
         this.primaryStage = primaryStage;
         engine.setUi(this);
@@ -80,6 +83,16 @@ public final class AppController implements UiBridge {
         NewLgsDialog.show(primaryStage, this);
     }
 
+    /** Next free default system name for the current language, e.g. lgs1 / matrix1. */
+    public String nextDefaultName() {
+        String prefix = I18n.t("new.defaultPrefix");
+        int n = 1;
+        while (engine.state().contains(prefix + n)) {
+            n++;
+        }
+        return prefix + n;
+    }
+
     public void openSettings() {
         SettingsDialog.show(primaryStage, this);
     }
@@ -107,10 +120,7 @@ public final class AppController implements UiBridge {
 
     private void rebuildUi() {
         String open = engine.state().openName();
-        if (detailWindow != null) {
-            detailWindow.hide();
-            detailWindow = null;
-        }
+        detailWindow = null;
         mainScreen = new MainScreen(this);
         primaryStage.setTitle(I18n.t("app.title"));
         if (primaryStage.getScene() != null) {
@@ -120,15 +130,6 @@ public final class AppController implements UiBridge {
         refreshVisualization();
         if (open != null && engine.state().get(open) != null) {
             ensureDetail(open);
-        }
-    }
-
-    public void detailClosed(LgsWindow window) {
-        String name = window.lgsName();
-        if (name != null) {
-            engine.execute("close();", CommandContext.lgs(name));
-        } else {
-            window.hide();
         }
     }
 
@@ -151,7 +152,7 @@ public final class AppController implements UiBridge {
     @Override
     public void closeWindow(String name) {
         if (detailWindow != null && name != null && name.equals(detailWindow.lgsName())) {
-            detailWindow.hide();
+            showMain();
             detailWindow = null;
         }
         refreshButtons();
@@ -163,35 +164,35 @@ public final class AppController implements UiBridge {
         if (detailWindow != null && name.equals(detailWindow.lgsName())) {
             detailWindow.refresh(engine.state().get(name));
         }
-        if (name.equals(engine.state().openName())) {
+        if (name.equals(vizName)) {
             refreshVisualization();
         }
     }
 
     @Override
     public void highlightRow(String name, int rowOneBased, String hex) {
-        if (name.equals(engine.state().openName())) {
+        if (name.equals(vizName)) {
             mainScreen.visualization().highlight(rowOneBased, hex);
         }
     }
 
     @Override
     public void fitView(String name) {
-        if (name.equals(engine.state().openName())) {
+        if (name.equals(vizName)) {
             mainScreen.visualization().fit();
         }
     }
 
     @Override
     public void animate(String name, int rowOneBased, Fraction from, Fraction to, double durationSeconds) {
-        if (name.equals(engine.state().openName())) {
+        if (name.equals(vizName)) {
             mainScreen.visualization().startAnimation(rowOneBased, from, to, durationSeconds);
         }
     }
 
     @Override
     public void setAxisRange(String name, int axisIndex, double min, double max) {
-        if (name.equals(engine.state().openName())) {
+        if (name.equals(vizName)) {
             mainScreen.visualization().setAxisRange(axisIndex, min, max);
         }
     }
@@ -235,6 +236,13 @@ public final class AppController implements UiBridge {
         }
     }
 
+    @Override
+    public void toggleLabels(String name) {
+        if (name.equals(vizName)) {
+            mainScreen.visualization().toggleLabels();
+        }
+    }
+
     private String activeLogText() {
         if (detailWindow != null) {
             return detailWindow.logText();
@@ -250,7 +258,15 @@ public final class AppController implements UiBridge {
 
     private void refreshVisualization() {
         String open = engine.state().openName();
-        mainScreen.visualization().setLgs(open == null ? null : engine.state().get(open));
+        if (open != null) {
+            vizName = open;
+        }
+        // Keep showing the last selected system after its window closes; drop it
+        // only once the system itself no longer exists.
+        if (vizName != null && engine.state().get(vizName) == null) {
+            vizName = null;
+        }
+        mainScreen.visualization().setLgs(vizName == null ? null : engine.state().get(vizName));
     }
 
     private void ensureDetail(String name) {
@@ -261,18 +277,32 @@ public final class AppController implements UiBridge {
             detailWindow = new LgsWindow(this);
         }
         detailWindow.bind(engine.state().get(name));
-        detailWindow.showIfNeeded();
+        showDetail();
     }
 
     private void reconcileDetail() {
         String open = engine.state().openName();
         if (open == null || engine.state().get(open) == null) {
             if (detailWindow != null) {
-                detailWindow.hide();
+                showMain();
                 detailWindow = null;
             }
         } else {
             ensureDetail(open);
+        }
+    }
+
+    /** Swaps the single window's content to the detail view of the open system. */
+    private void showDetail() {
+        if (detailWindow != null && primaryStage.getScene() != null) {
+            primaryStage.getScene().setRoot(detailWindow.getRoot());
+        }
+    }
+
+    /** Swaps the single window's content back to the main overview screen. */
+    private void showMain() {
+        if (primaryStage.getScene() != null) {
+            primaryStage.getScene().setRoot(mainScreen.getRoot());
         }
     }
 }

@@ -128,6 +128,7 @@ public final class CommandEngine {
             case "savelog" -> savelog(c, ctx);
             case "copylog" -> copylog(c, ctx);
             case "saveplot" -> saveplot(c, ctx);
+            case "labels" -> labels(c, ctx);
             default -> CommandResult.error(I18n.t("m.unknownCmd", c.name()));
         };
     }
@@ -949,6 +950,12 @@ public final class CommandEngine {
         Path file = Paths.get("lgs").resolve(c.arg(0) + ".png");
         ui.savePlot(file.toAbsolutePath().toString());
         return CommandResult.ok(I18n.t("m.plotSaved", file.toAbsolutePath().toString()));
+    }
+
+    private CommandResult labels(ParsedCommand c, CommandContext ctx) throws CommandException {
+        Lgs lgs = lgsOf(ctx);
+        ui.toggleLabels(lgs.name());
+        return CommandResult.ok(I18n.t("m.labelsToggled"));
     }
 
     private static String vectorText(Fraction[] v, boolean frac) {

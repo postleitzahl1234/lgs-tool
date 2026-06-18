@@ -6,9 +6,11 @@ import de.lgstool.geo.expr.Expr;
 import de.lgstool.geo.expr.MathBuiltins;
 import de.lgstool.geo.expr.Parser;
 import de.lgstool.geo.expr.Value;
+import de.lgstool.geo.io.GeoStorage;
 import de.lgstool.geo.model.Construction;
 import de.lgstool.geo.model.GeoObject;
 import de.lgstool.geo.model.GeoType;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -35,6 +37,8 @@ public final class GeoEngine {
     private static final Pattern FUNCTION_DEF = Pattern.compile("([A-Za-z][A-Za-z0-9_]*)\\s*\\(([^)]*)\\)");
     private static final Pattern DELETE = Pattern.compile(
             "(?i)(?:delete|del|lösche|loesche)\\s*\\(\\s*([A-Za-z][A-Za-z0-9_]*)\\s*\\)");
+    private static final Pattern SAVE = Pattern.compile("(?i)(?:save|speichern)\\s*\\(\\s*(\\w+)\\s*\\)");
+    private static final Pattern LOAD = Pattern.compile("(?i)(?:load|laden)\\s*\\(\\s*(\\w+)\\s*\\)");
 
     private Construction construction = newConstruction();
     private final Deque<Construction> undoStack = new ArrayDeque<>();
@@ -90,6 +94,14 @@ public final class GeoEngine {
         Matcher del = DELETE.matcher(s);
         if (del.matches()) {
             return delete(del.group(1));
+        }
+        Matcher save = SAVE.matcher(s);
+        if (save.matches()) {
+            return save(save.group(1));
+        }
+        Matcher load = LOAD.matcher(s);
+        if (load.matches()) {
+            return load(load.group(1));
         }
         int eq = topLevelEquals(s);
         if (eq >= 0) {
@@ -161,7 +173,7 @@ public final class GeoEngine {
         }
         snapshot();
         List<String> removed = construction.delete(name);
-        view.constructionChanged();
+        view.structureChanged();
         return GeoResult.ok("Gelöscht: " + String.join(", ", removed));
     }
 
@@ -171,7 +183,7 @@ public final class GeoEngine {
         }
         snapshot();
         construction.clear();
-        view.constructionChanged();
+        view.structureChanged();
         return GeoResult.ok("Zeichnung geleert.");
     }
 
@@ -187,13 +199,61 @@ public final class GeoEngine {
         return GeoResult.ok(out);
     }
 
+    private GeoResult save(String name) {
+        try {
+            var path = GeoStorage.save(exportLines(), name);
+            return GeoResult.ok("Gespeichert: " + path.toAbsolutePath());
+        } catch (IOException e) {
+            return GeoResult.error("Speichern fehlgeschlagen: " + e.getMessage());
+        }
+    }
+
+    private GeoResult load(String name) {
+        List<String> lines;
+        try {
+            lines = GeoStorage.load(name);
+        } catch (IOException e) {
+            return GeoResult.error("Laden fehlgeschlagen: " + e.getMessage());
+        }
+        GeoEngine temp = new GeoEngine();
+        for (String l : lines) {
+            temp.execute(l);
+        }
+        snapshot();
+        construction = temp.construction;
+        view.structureChanged();
+        return GeoResult.ok("Geladen: " + name + " (" + construction.size() + " Objekte).");
+    }
+
+    private List<String> exportLines() {
+        List<String> out = new ArrayList<>();
+        for (GeoObject o : construction.objects()) {
+            out.add(replayLine(o));
+        }
+        return out;
+    }
+
+    private static String replayLine(GeoObject o) {
+        if (o.kind() == GeoObject.Kind.FUNCTION) {
+            return o.source();
+        }
+        if (o.isSlider()) {
+            return o.name() + " = Slider(" + GeoFormat.num(o.sliderMin()) + ", "
+                    + GeoFormat.num(o.sliderMax()) + ", " + GeoFormat.num(o.sliderStep()) + ")";
+        }
+        if (o.kind() == GeoObject.Kind.FREE) {
+            return o.name() + " = " + GeoFormat.value(o.value());
+        }
+        return o.name() + " = " + o.source();
+    }
+
     private GeoResult undo() {
         if (undoStack.isEmpty()) {
             return GeoResult.ok("Nichts rückgängig zu machen.");
         }
         redoStack.push(construction.copy());
         construction = undoStack.pop();
-        view.constructionChanged();
+        view.structureChanged();
         return GeoResult.ok("Rückgängig.");
     }
 
@@ -203,29 +263,34 @@ public final class GeoEngine {
         }
         undoStack.push(construction.copy());
         construction = redoStack.pop();
-        view.constructionChanged();
+        view.structureChanged();
         return GeoResult.ok("Wiederhergestellt.");
     }
 
     // ---- UI-driven mutation (drag / slider) ------------------------------
 
+    /** Records a single undo snapshot at the start of a drag/slider interaction. */
+    public void beginInteraction() {
+        snapshot();
+    }
+
     /** Live update of a free value (no undo snapshot) — used during a drag. */
     public void setFreeValueLive(String name, Value value) {
         construction.setFreeValue(name, value);
-        view.constructionChanged();
+        view.valuesChanged();
     }
 
     /** Commits a free-value change (records undo) — used at drag end / on slider release. */
     public void setFreeValue(String name, Value value) {
         snapshot();
         construction.setFreeValue(name, value);
-        view.constructionChanged();
+        view.valuesChanged();
     }
 
     // ---- helpers ---------------------------------------------------------
 
     private GeoResult committed(GeoObject obj) {
-        view.constructionChanged();
+        view.structureChanged();
         return GeoResult.ok(obj.name() + " = " + GeoFormat.value(obj.value()));
     }
 

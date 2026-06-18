@@ -47,6 +47,11 @@ public final class MainScreen {
         newLgs.setStyle("-fx-background-color: " + Theme.ACCENT_PETROL + "; -fx-text-fill: white; -fx-font-weight: bold;");
         newLgs.setOnAction(e -> controller.newLgsDialog());
 
+        Button newGraph = new Button(I18n.t("main.newGraph"));
+        newGraph.setMaxWidth(Double.MAX_VALUE);
+        newGraph.setStyle("-fx-background-color: " + Theme.ACCENT_SAGE + "; -fx-text-fill: " + Theme.TEXT + "; -fx-font-weight: bold;");
+        newGraph.setOnAction(e -> controller.openGraph());
+
         buttonBox.setPadding(new Insets(4));
         ScrollPane scroll = new ScrollPane(buttonBox);
         scroll.setFitToWidth(true);
@@ -64,7 +69,7 @@ public final class MainScreen {
         statusLog.setPrefHeight(200);
         statusLog.setMinHeight(140);
 
-        VBox left = new VBox(12, title, sysLabel, newLgs, scroll, new Separator(), options, mainBar, statusLog);
+        VBox left = new VBox(12, title, sysLabel, newLgs, newGraph, scroll, new Separator(), options, mainBar, statusLog);
         left.setPadding(new Insets(16));
         left.setPrefWidth(360);
         left.setStyle("-fx-background-color: derive(" + Theme.BACKGROUND + ", 30%); -fx-border-color: derive("

@@ -61,6 +61,7 @@ public final class I18n {
         m.put("app.title", "LGS-Tool");
         m.put("main.systems", "Systeme");
         m.put("main.newLgs", "+ Neues LGS");
+        m.put("main.newGraph", "+ Zeichenblatt");
         m.put("main.settings", "Einstellungen");
         m.put("main.glossary", "Glossar");
         m.put("main.messages", "Meldungen");
@@ -84,6 +85,13 @@ public final class I18n {
         m.put("lgs.axes", "Achsen…");
         m.put("lgs.close", "Schließen");
         m.put("lgs.back", "← Übersicht");
+        m.put("graph.title", "Zeichenblatt");
+        m.put("graph.objects", "Objekte");
+        m.put("graph.noObjects", "Noch keine Objekte.\nTippe z. B. A=(1,2)");
+        m.put("graph.clear", "Leeren");
+        m.put("graph.log", "Meldungen");
+        m.put("graph.view2d", "2D");
+        m.put("graph.view3d", "3D");
         m.put("lgs.log", "Lösungen / Log");
         m.put("matrix.empty", "Leeres LGS – mit add(...) Gleichungen eintragen.");
         m.put("settings.title", "Einstellungen");
@@ -325,6 +333,7 @@ public final class I18n {
         m.put("app.title", "LGS-Tool");
         m.put("main.systems", "Systems");
         m.put("main.newLgs", "+ New system");
+        m.put("main.newGraph", "+ Graphing");
         m.put("main.settings", "Settings");
         m.put("main.glossary", "Glossary");
         m.put("main.messages", "Messages");
@@ -348,6 +357,13 @@ public final class I18n {
         m.put("lgs.axes", "Axes…");
         m.put("lgs.close", "Close");
         m.put("lgs.back", "← Overview");
+        m.put("graph.title", "Graphing");
+        m.put("graph.objects", "Objects");
+        m.put("graph.noObjects", "No objects yet.\nTry e.g. A=(1,2)");
+        m.put("graph.clear", "Clear");
+        m.put("graph.log", "Messages");
+        m.put("graph.view2d", "2D");
+        m.put("graph.view3d", "3D");
         m.put("lgs.log", "Solutions / Log");
         m.put("matrix.empty", "Empty system – add equations with add(...).");
         m.put("settings.title", "Settings");

@@ -6,6 +6,7 @@ import de.lgstool.command.CommandResult;
 import de.lgstool.command.UiBridge;
 import de.lgstool.config.I18n;
 import de.lgstool.config.Theme;
+import de.lgstool.geo.ui.GraphWorkspace;
 import de.lgstool.math.Fraction;
 import de.lgstool.model.Lgs;
 import java.io.File;
@@ -29,6 +30,7 @@ public final class AppController implements UiBridge {
     private final Stage primaryStage;
     private MainScreen mainScreen;
     private LgsWindow detailWindow;
+    private GraphWorkspace graphWorkspace;
 
     /** System shown in the coordinate system; persists after its window closes. */
     private String vizName;
@@ -99,6 +101,16 @@ public final class AppController implements UiBridge {
 
     public void openGlossary() {
         GlossaryDialog.show(primaryStage);
+    }
+
+    /** Opens the graphing workspace in the single window (created on first use). */
+    public void openGraph() {
+        if (graphWorkspace == null) {
+            graphWorkspace = new GraphWorkspace(this::showMain);
+        }
+        if (primaryStage.getScene() != null) {
+            primaryStage.getScene().setRoot(graphWorkspace.getRoot());
+        }
     }
 
     public void openAxes() {

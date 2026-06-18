@@ -1,5 +1,6 @@
 package de.lgstool;
 
+import de.lgstool.geo.ui.GraphWorkspace;
 import de.lgstool.ui.AppController;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -109,6 +110,32 @@ public final class SelfTest {
                 layout(scene);
                 c.runLgs("big", "close();");
                 layout(scene);
+
+                // Graphing workspace: dynamic 2D + 3D geometry via the input bar.
+                GraphWorkspace graph = new GraphWorkspace(() -> {
+                });
+                Scene gScene = new Scene(graph.getRoot(), 1280, 800);
+                layout(gScene);
+                graph.submit("A = (1, 2)");
+                graph.submit("s = Slider(0, 5)");
+                graph.submit("c = Circle(A, s)");
+                graph.submit("B = (4, 3)");
+                graph.submit("M = Midpoint(A, B)");
+                graph.submit("g = Line(A, B)");
+                graph.submit("h = Line((0, 0), (0, 5))");
+                graph.submit("S = Intersect(g, h)");
+                graph.submit("f(x) = sin(x)");
+                layout(gScene);
+                graph.showView(true);   // 3D
+                graph.submit("P = (1, 1, 1)");
+                graph.submit("E = Plane((0,0,0), (1,0,0), (0,1,0))");
+                graph.submit("K = Sphere((0,0,0), 2)");
+                graph.submit("surf(x, y) = x^2 - y^2");
+                layout(gScene);
+                graph.submit("Delete(A)");   // cascade delete c, M, g, S
+                graph.submit("undo");
+                graph.showView(false);   // back to 2D
+                layout(gScene);
 
                 // language switch (rebuilds the UI).
                 c.changeLanguage("en");

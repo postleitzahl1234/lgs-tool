@@ -1,14 +1,24 @@
 package de.lgstool.geo.command;
 
 /**
- * Callback the {@link GeoEngine} uses to tell the UI the construction changed, so it
- * can re-render the plane and the algebra list. {@link #NONE} is a no-op used in
- * tests and headless runs.
+ * Callbacks the {@link GeoEngine} uses to tell the UI the construction changed.
+ * {@link #structureChanged()} fires when objects are added/removed/redefined (rebuild
+ * the algebra list); {@link #valuesChanged()} fires on a drag or slider move (only the
+ * plane needs to repaint). {@link #NONE} is a no-op for tests and headless runs.
  */
 public interface GeoView {
 
-    void constructionChanged();
+    void structureChanged();
 
-    GeoView NONE = () -> {
+    void valuesChanged();
+
+    GeoView NONE = new GeoView() {
+        @Override
+        public void structureChanged() {
+        }
+
+        @Override
+        public void valuesChanged() {
+        }
     };
 }

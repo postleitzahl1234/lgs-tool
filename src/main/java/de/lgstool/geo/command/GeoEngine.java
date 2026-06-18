@@ -1,5 +1,6 @@
 package de.lgstool.geo.command;
 
+import de.lgstool.config.I18n;
 import de.lgstool.geo.expr.CompositeBuiltins;
 import de.lgstool.geo.expr.EvalException;
 import de.lgstool.geo.expr.Expr;
@@ -63,7 +64,7 @@ public final class GeoEngine {
             s = s.substring(0, s.length() - 1).trim();
         }
         if (s.isEmpty()) {
-            return GeoResult.error("Leere Eingabe.");
+            return GeoResult.error(I18n.t("geo.emptyInput"));
         }
         try {
             return dispatch(s);
@@ -114,14 +115,14 @@ public final class GeoEngine {
 
     private GeoResult defineWithLabel(String left, String right) {
         if (right.isEmpty()) {
-            return GeoResult.error("Fehlende Definition nach '='.");
+            return GeoResult.error(I18n.t("geo.missingDef"));
         }
         Matcher fn = FUNCTION_DEF.matcher(left);
         if (fn.matches()) {
             return defineFunction(fn.group(1), splitParams(fn.group(2)), right);
         }
         if (!IDENT.matcher(left).matches()) {
-            return GeoResult.error("Ungültiger Name links von '=': '" + left + "'.");
+            return GeoResult.error(I18n.t("geo.invalidName", left));
         }
         Expr ast = Parser.parse(right);
         if (asSlider(ast) != null) {
@@ -158,15 +159,15 @@ public final class GeoEngine {
         if (call.args().size() != 2
                 || !(call.args().get(0) instanceof Expr.Ref pRef)
                 || !(call.args().get(1) instanceof Expr.Ref sRef)) {
-            return GeoResult.error("Locus erwartet (Punkt, Parameter).");
+            return GeoResult.error(I18n.t("geo.locusArgs"));
         }
         GeoObject p = construction.get(pRef.name());
         GeoObject s = construction.get(sRef.name());
         if (p == null || !(p.value() instanceof Value.PointV)) {
-            return GeoResult.error("Locus: '" + pRef.name() + "' ist kein Punkt.");
+            return GeoResult.error(I18n.t("geo.locusNotPoint", pRef.name()));
         }
         if (s == null || !s.isSlider()) {
-            return GeoResult.error("Locus: '" + sRef.name() + "' ist kein Schieberegler.");
+            return GeoResult.error(I18n.t("geo.locusNotSlider", sRef.name()));
         }
         List<Value.PointV> pts = new ArrayList<>();
         int steps = 200;
@@ -186,7 +187,7 @@ public final class GeoEngine {
             }
         }
         if (pts.isEmpty()) {
-            return GeoResult.error("Locus: keine Punkte berechnet.");
+            return GeoResult.error(I18n.t("geo.locusEmpty"));
         }
         snapshot();
         GeoObject obj = construction.defineLiteral(name, source, new Value.LocusV(List.copyOf(pts)));
@@ -196,48 +197,48 @@ public final class GeoEngine {
     private GeoResult defineSlider(String name, String source, Expr.Call call) {
         List<Value> args = call.args().stream().map(construction::evaluate).toList();
         if (args.size() < 2 || args.size() > 3) {
-            return GeoResult.error("Slider erwartet (min, max) oder (min, max, schritt).");
+            return GeoResult.error(I18n.t("geo.sliderArgs"));
         }
         double min = GeoBuiltins.num(args.get(0));
         double max = GeoBuiltins.num(args.get(1));
         double step = args.size() == 3 ? GeoBuiltins.num(args.get(2)) : (max - min) / 100.0;
         if (max <= min) {
-            return GeoResult.error("Slider: max muss größer als min sein.");
+            return GeoResult.error(I18n.t("geo.sliderMaxMin"));
         }
         snapshot();
         construction.define(name, source, new Expr.Num(min), null);
         construction.get(name).configureSlider(min, max, step);
-        return GeoResult.ok(name + " = " + GeoFormat.num(min) + "  (Slider " + GeoFormat.num(min) + "…" + GeoFormat.num(max) + ")");
+        return GeoResult.ok(I18n.t("geo.sliderCreated", name, GeoFormat.num(min), GeoFormat.num(max)));
     }
 
     // ---- meta commands ---------------------------------------------------
 
     private GeoResult delete(String name) {
         if (!construction.contains(name)) {
-            return GeoResult.error("Objekt '" + name + "' existiert nicht.");
+            return GeoResult.error(I18n.t("geo.notExists", name));
         }
         snapshot();
         List<String> removed = construction.delete(name);
         view.structureChanged();
-        return GeoResult.ok("Gelöscht: " + String.join(", ", removed));
+        return GeoResult.ok(I18n.t("geo.deleted", String.join(", ", removed)));
     }
 
     private GeoResult clear() {
         if (construction.size() == 0) {
-            return GeoResult.ok("Bereits leer.");
+            return GeoResult.ok(I18n.t("geo.alreadyEmpty"));
         }
         snapshot();
         construction.clear();
         view.structureChanged();
-        return GeoResult.ok("Zeichnung geleert.");
+        return GeoResult.ok(I18n.t("geo.cleared"));
     }
 
     private GeoResult list() {
         if (construction.size() == 0) {
-            return GeoResult.ok("Keine Objekte.");
+            return GeoResult.ok(I18n.t("geo.noObjects"));
         }
         List<String> out = new ArrayList<>();
-        out.add(construction.size() + " Objekt(e):");
+        out.add(I18n.t("geo.objectCount", construction.size()));
         for (GeoObject o : construction.objects()) {
             out.add("  " + o.name() + " = " + GeoFormat.value(o.value()));
         }
@@ -247,9 +248,9 @@ public final class GeoEngine {
     private GeoResult save(String name) {
         try {
             var path = GeoStorage.save(exportLines(), name);
-            return GeoResult.ok("Gespeichert: " + path.toAbsolutePath());
+            return GeoResult.ok(I18n.t("geo.saved", path.toAbsolutePath().toString()));
         } catch (IOException e) {
-            return GeoResult.error("Speichern fehlgeschlagen: " + e.getMessage());
+            return GeoResult.error(I18n.t("geo.saveFailed", e.getMessage()));
         }
     }
 
@@ -258,7 +259,7 @@ public final class GeoEngine {
         try {
             lines = GeoStorage.load(name);
         } catch (IOException e) {
-            return GeoResult.error("Laden fehlgeschlagen: " + e.getMessage());
+            return GeoResult.error(I18n.t("geo.loadFailed", e.getMessage()));
         }
         GeoEngine temp = new GeoEngine();
         for (String l : lines) {
@@ -267,7 +268,7 @@ public final class GeoEngine {
         snapshot();
         construction = temp.construction;
         view.structureChanged();
-        return GeoResult.ok("Geladen: " + name + " (" + construction.size() + " Objekte).");
+        return GeoResult.ok(I18n.t("geo.loaded", name, construction.size()));
     }
 
     private List<String> exportLines() {
@@ -299,22 +300,22 @@ public final class GeoEngine {
 
     private GeoResult undo() {
         if (undoStack.isEmpty()) {
-            return GeoResult.ok("Nichts rückgängig zu machen.");
+            return GeoResult.ok(I18n.t("geo.nothingUndo"));
         }
         redoStack.push(construction.copy());
         construction = undoStack.pop();
         view.structureChanged();
-        return GeoResult.ok("Rückgängig.");
+        return GeoResult.ok(I18n.t("geo.undone"));
     }
 
     private GeoResult redo() {
         if (redoStack.isEmpty()) {
-            return GeoResult.ok("Nichts zu wiederholen.");
+            return GeoResult.ok(I18n.t("geo.nothingRedo"));
         }
         undoStack.push(construction.copy());
         construction = redoStack.pop();
         view.structureChanged();
-        return GeoResult.ok("Wiederhergestellt.");
+        return GeoResult.ok(I18n.t("geo.redone"));
     }
 
     // ---- UI-driven mutation (drag / slider) ------------------------------
@@ -362,7 +363,7 @@ public final class GeoEngine {
                 }
             }
         }
-        throw new EvalException("Keine freien Namen mehr.");
+        throw new EvalException(I18n.t("geo.noNames"));
     }
 
     private static Expr.Call asSlider(Expr ast) {
@@ -391,13 +392,13 @@ public final class GeoEngine {
             String t = p.trim();
             if (!t.isEmpty()) {
                 if (!IDENT.matcher(t).matches()) {
-                    throw new EvalException("Ungültiger Parametername: '" + t + "'.");
+                    throw new EvalException(I18n.t("geo.badParam", t));
                 }
                 params.add(t);
             }
         }
         if (params.isEmpty()) {
-            throw new EvalException("Funktion braucht mindestens einen Parameter.");
+            throw new EvalException(I18n.t("geo.needParam"));
         }
         return params;
     }

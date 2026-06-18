@@ -137,6 +137,25 @@ public final class SelfTest {
                 graph.showView(false);   // back to 2D
                 layout(gScene);
 
+                // calculus, polygons, conics, locus, save/load.
+                graph.submit("fx(x) = x^2");
+                graph.submit("dfx = Derivative(fx)");
+                graph.submit("ar = Integral(fx, 0, 1)");
+                graph.submit("tg = Tangent(1, fx)");
+                graph.submit("poly = Polygon((0,0), (3,0), (0,3))");
+                graph.submit("wkl = Angle((1,0), (0,0), (0,1))");
+                graph.submit("el = Ellipse((-3,0), (3,0), 5)");
+                graph.submit("sl = Slider(0, 6.283)");
+                graph.submit("Qp = (cos(sl), sin(sl))");
+                graph.submit("loc = Locus(Qp, sl)");
+                graph.submit("save(selftest_geo)");
+                graph.submit("load(selftest_geo)");
+                layout(gScene);
+
+                // multiple named graph sheets via the shell.
+                c.newGraphSheet();
+                layout(scene);
+
                 // language switch (rebuilds the UI).
                 c.changeLanguage("en");
                 layout(scene);

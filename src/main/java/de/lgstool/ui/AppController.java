@@ -10,6 +10,8 @@ import de.lgstool.geo.ui.GraphWorkspace;
 import de.lgstool.math.Fraction;
 import de.lgstool.model.Lgs;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.Parent;
@@ -30,7 +32,7 @@ public final class AppController implements UiBridge {
     private final Stage primaryStage;
     private MainScreen mainScreen;
     private LgsWindow detailWindow;
-    private GraphWorkspace graphWorkspace;
+    private final LinkedHashMap<String, GraphWorkspace> sheets = new LinkedHashMap<>();
 
     /** System shown in the coordinate system; persists after its window closes. */
     private String vizName;
@@ -103,14 +105,34 @@ public final class AppController implements UiBridge {
         GlossaryDialog.show(primaryStage);
     }
 
-    /** Opens the graphing workspace in the single window (created on first use). */
-    public void openGraph() {
-        if (graphWorkspace == null) {
-            graphWorkspace = new GraphWorkspace(this::showMain);
+    /** Creates a new named graphing sheet and opens it. */
+    public void newGraphSheet() {
+        String name = nextSheetName();
+        sheets.put(name, new GraphWorkspace(name, this::showMain));
+        refreshButtons();
+        openSheet(name);
+    }
+
+    /** Opens an existing graphing sheet in the single window. */
+    public void openSheet(String name) {
+        GraphWorkspace ws = sheets.get(name);
+        if (ws != null && primaryStage.getScene() != null) {
+            primaryStage.getScene().setRoot(ws.getRoot());
         }
-        if (primaryStage.getScene() != null) {
-            primaryStage.getScene().setRoot(graphWorkspace.getRoot());
+    }
+
+    public void deleteSheet(String name) {
+        sheets.remove(name);
+        refreshButtons();
+    }
+
+    private String nextSheetName() {
+        String prefix = I18n.t("graph.sheetPrefix");
+        int n = 1;
+        while (sheets.containsKey(prefix + n)) {
+            n++;
         }
+        return prefix + n;
     }
 
     public void openAxes() {
@@ -266,6 +288,7 @@ public final class AppController implements UiBridge {
 
     private void refreshButtons() {
         mainScreen.refreshButtons(engine.state().names(), engine.state().openName());
+        mainScreen.refreshSheets(new ArrayList<>(sheets.keySet()));
     }
 
     private void refreshVisualization() {

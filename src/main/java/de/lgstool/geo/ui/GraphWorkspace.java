@@ -37,8 +37,14 @@ public final class GraphWorkspace implements GeoView {
     private final BorderPane root = new BorderPane();
 
     private boolean threeD;
+    private final String name;
 
     public GraphWorkspace(Runnable onBack) {
+        this(null, onBack);
+    }
+
+    public GraphWorkspace(String name, Runnable onBack) {
+        this.name = name;
         engine.setView(this);
         scene3d.setVisible(false);
 
@@ -77,7 +83,7 @@ public final class GraphWorkspace implements GeoView {
         back.setStyle("-fx-background-color: " + Theme.ACCENT_PETROL + "; -fx-text-fill: white; -fx-font-weight: bold;");
         back.setOnAction(e -> onBack.run());
 
-        Label title = new Label(I18n.t("graph.title"));
+        Label title = new Label(name == null ? I18n.t("graph.title") : I18n.t("graph.title") + ": " + name);
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + Theme.ACCENT_PETROL + ";");
 
         Region spacer = new Region();

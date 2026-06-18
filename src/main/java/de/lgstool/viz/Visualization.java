@@ -334,11 +334,11 @@ public final class Visualization extends StackPane {
     }
 
     private double sx(double x, double w) {
-        return (x - vx0) / (vx1 - vx0) * w;
+        return Plane2DMath.sx(x, vx0, vx1, w);
     }
 
     private double sy(double y, double h) {
-        return h - (y - vy0) / (vy1 - vy0) * h;
+        return Plane2DMath.sy(y, vy0, vy1, h);
     }
 
     private String classificationText(Lgs lgs) {
@@ -498,20 +498,11 @@ public final class Visualization extends StackPane {
     }
 
     private static double niceStep(double raw) {
-        if (raw <= 0) {
-            return 1;
-        }
-        double pow = Math.pow(10, Math.floor(Math.log10(raw)));
-        double frac = raw / pow;
-        double nice = frac < 1.5 ? 1 : frac < 3 ? 2 : frac < 7 ? 5 : 10;
-        return nice * pow;
+        return Plane2DMath.niceStep(raw);
     }
 
     private static String trim(double v) {
-        if (Math.abs(v - Math.rint(v)) < 1e-9) {
-            return String.valueOf((long) Math.rint(v));
-        }
-        return String.format(Locale.US, "%.2g", v);
+        return Plane2DMath.trim(v);
     }
 
     // ---- 1D --------------------------------------------------------------

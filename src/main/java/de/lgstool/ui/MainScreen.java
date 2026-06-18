@@ -25,6 +25,7 @@ public final class MainScreen {
     private final AppController controller;
     private final BorderPane root = new BorderPane();
     private final VBox buttonBox = new VBox(8);
+    private final VBox sheetBox = new VBox(6);
     private final LogPane statusLog = new LogPane(I18n.t("main.messages"));
     private final Visualization viz = new Visualization();
 
@@ -50,10 +51,15 @@ public final class MainScreen {
         Button newGraph = new Button(I18n.t("main.newGraph"));
         newGraph.setMaxWidth(Double.MAX_VALUE);
         newGraph.setStyle("-fx-background-color: " + Theme.ACCENT_SAGE + "; -fx-text-fill: " + Theme.TEXT + "; -fx-font-weight: bold;");
-        newGraph.setOnAction(e -> controller.openGraph());
+        newGraph.setOnAction(e -> controller.newGraphSheet());
+
+        Label sheetsLabel = new Label(I18n.t("main.sheets"));
+        sheetsLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: " + Theme.TEXT + ";");
 
         buttonBox.setPadding(new Insets(4));
-        ScrollPane scroll = new ScrollPane(buttonBox);
+        sheetBox.setPadding(new Insets(4));
+        VBox listBox = new VBox(8, sysLabel, buttonBox, new Separator(), sheetsLabel, sheetBox);
+        ScrollPane scroll = new ScrollPane(listBox);
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background: " + Theme.BACKGROUND + "; -fx-background-color: " + Theme.BACKGROUND + ";");
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -69,7 +75,7 @@ public final class MainScreen {
         statusLog.setPrefHeight(200);
         statusLog.setMinHeight(140);
 
-        VBox left = new VBox(12, title, sysLabel, newLgs, newGraph, scroll, new Separator(), options, mainBar, statusLog);
+        VBox left = new VBox(12, title, newLgs, newGraph, scroll, new Separator(), options, mainBar, statusLog);
         left.setPadding(new Insets(16));
         left.setPrefWidth(360);
         left.setStyle("-fx-background-color: derive(" + Theme.BACKGROUND + ", 30%); -fx-border-color: derive("
@@ -149,6 +155,32 @@ public final class MainScreen {
 
             HBox row = new HBox(4, button, delete);
             buttonBox.getChildren().add(row);
+        }
+    }
+
+    public void refreshSheets(List<String> names) {
+        sheetBox.getChildren().clear();
+        if (names.isEmpty()) {
+            Label none = new Label(I18n.t("main.noSheets"));
+            none.setStyle("-fx-text-fill: " + Theme.TEXT + ";");
+            sheetBox.getChildren().add(none);
+            return;
+        }
+        for (String name : names) {
+            Button button = new Button(name);
+            button.setMaxWidth(Double.MAX_VALUE);
+            button.setAlignment(Pos.CENTER_LEFT);
+            button.setStyle("-fx-background-color: derive(" + Theme.ACCENT_SAGE
+                    + ", 40%); -fx-text-fill: " + Theme.TEXT + "; -fx-font-weight: bold;");
+            button.setOnAction(e -> controller.openSheet(name));
+            HBox.setHgrow(button, Priority.ALWAYS);
+
+            Button delete = new Button("×");
+            delete.setStyle("-fx-text-fill: #B23A48; -fx-font-weight: bold;");
+            delete.setOnAction(e -> controller.deleteSheet(name));
+
+            HBox row = new HBox(4, button, delete);
+            sheetBox.getChildren().add(row);
         }
     }
 

@@ -22,7 +22,11 @@ public sealed interface Value {
         }
     }
 
-    record VectorV(double x, double y, double z, boolean is3D) implements Value {
+    /** A vector; {@code base} is the optional tail point (null = drawn from the origin). */
+    record VectorV(double x, double y, double z, boolean is3D, PointV base) implements Value {
+        public VectorV(double x, double y, double z, boolean is3D) {
+            this(x, y, z, is3D, null);
+        }
     }
 
     /** Infinite 2D line {@code a·x + b·y = c}. */
@@ -30,6 +34,18 @@ public sealed interface Value {
     }
 
     record SegmentV(PointV p, PointV q) implements Value {
+    }
+
+    /** A polygon given by its ordered vertices. */
+    record PolygonV(List<PointV> vertices) implements Value {
+    }
+
+    /** A general 2D conic {@code A·x² + B·xy + C·y² + D·x + E·y + F = 0}. */
+    record ConicV(double a, double b, double c, double d, double e, double f) implements Value {
+    }
+
+    /** A locus: the sampled path of a dependent point as a parameter varies. */
+    record LocusV(List<PointV> points) implements Value {
     }
 
     /** 2D circle with the given centre and radius. */

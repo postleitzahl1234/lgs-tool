@@ -23,10 +23,10 @@ public final class CompositeBuiltins implements BuiltinFunctions {
     }
 
     @Override
-    public Value call(String name, List<Value> args) {
+    public Value call(String name, List<Value> args, FunctionApplier applier) {
         if (primary.has(name)) {
-            return primary.call(name, args);
+            return primary.call(name, args, applier);
         }
-        return fallback.call(name, args);
+        return fallback.call(name, args, applier);
     }
 }

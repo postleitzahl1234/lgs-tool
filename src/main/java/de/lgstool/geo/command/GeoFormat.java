@@ -25,6 +25,9 @@ public final class GeoFormat {
             case Value.FunctionV f -> "Funktion";
             case Value.PlaneV p -> num(p.a()) + "·x + " + num(p.b()) + "·y + " + num(p.c()) + "·z = " + num(p.d());
             case Value.SphereV s -> "Kugel M=" + value(s.center()) + ", r=" + num(s.r());
+            case Value.PolygonV poly -> "Vieleck (" + poly.vertices().size() + " Ecken)";
+            case Value.ConicV con -> "Kegelschnitt";
+            case Value.LocusV loc -> "Ortslinie (" + loc.points().size() + " Punkte)";
         };
     }
 

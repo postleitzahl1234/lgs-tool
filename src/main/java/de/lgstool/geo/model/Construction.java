@@ -84,6 +84,22 @@ public final class Construction {
         return new Evaluator(this::resolve, builtins).eval(ast);
     }
 
+    /**
+     * Inserts a free object with a precomputed value that has no expression definition
+     * (e.g. a sampled locus). Style is carried over when redefining.
+     */
+    public GeoObject defineLiteral(String name, String source, Value value) {
+        GeoObject existing = objects.get(name);
+        GeoObject obj = new GeoObject(name, GeoObject.Kind.FREE, new Expr.Num(0), List.of(), List.of(), source, value);
+        if (existing != null) {
+            obj.setVisible(existing.isVisible());
+            obj.setColorHex(existing.colorHex());
+        }
+        objects.put(name, obj);
+        recomputeAll();
+        return obj;
+    }
+
     /** Overrides a {@link GeoObject.Kind#FREE} object's value (point drag / slider move). */
     public void setFreeValue(String name, Value value) {
         GeoObject obj = objects.get(name);

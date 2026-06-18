@@ -6,6 +6,8 @@ import de.lgstool.geo.expr.Expr;
 import de.lgstool.geo.expr.Value;
 import de.lgstool.geo.model.Construction;
 import de.lgstool.geo.model.GeoObject;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import javafx.scene.canvas.Canvas;
@@ -169,6 +171,9 @@ public final class CoordinatePlane2D extends Pane {
                 case Value.SegmentV s -> drawSegment(g, w, h, s, color);
                 case Value.CircleV circle -> drawCircle(g, w, h, circle, color);
                 case Value.VectorV v -> drawVector(g, w, h, v, color);
+                case Value.PolygonV poly -> drawPolygon(g, w, h, poly, color);
+                case Value.ConicV con -> drawConic(g, w, h, con, color);
+                case Value.LocusV loc -> drawLocus(g, w, h, loc, color);
                 case Value.FunctionV ignored -> drawFunction(g, w, h, o, color);
                 case Value.PointV p -> drawPoint(g, w, h, p, o.name(), color);
                 default -> {
@@ -229,10 +234,12 @@ public final class CoordinatePlane2D extends Pane {
         if (v.is3D()) {
             return;
         }
-        double x0 = sx(0, w);
-        double y0 = sy(0, h);
-        double x1 = sx(v.x(), w);
-        double y1 = sy(v.y(), h);
+        double bx = v.base() != null ? v.base().x() : 0;
+        double by = v.base() != null ? v.base().y() : 0;
+        double x0 = sx(bx, w);
+        double y0 = sy(by, h);
+        double x1 = sx(bx + v.x(), w);
+        double y1 = sy(by + v.y(), h);
         g.setStroke(color);
         g.setFill(color);
         g.setLineWidth(2);
@@ -242,6 +249,92 @@ public final class CoordinatePlane2D extends Pane {
         g.fillPolygon(
                 new double[]{x1, x1 - ah * Math.cos(angle - 0.4), x1 - ah * Math.cos(angle + 0.4)},
                 new double[]{y1, y1 - ah * Math.sin(angle - 0.4), y1 - ah * Math.sin(angle + 0.4)}, 3);
+    }
+
+    private void drawPolygon(GraphicsContext g, double w, double h, Value.PolygonV poly, Color color) {
+        List<Value.PointV> vs = poly.vertices();
+        double[] xs = new double[vs.size()];
+        double[] ys = new double[vs.size()];
+        int n = 0;
+        for (Value.PointV p : vs) {
+            if (!p.is3D()) {
+                xs[n] = sx(p.x(), w);
+                ys[n] = sy(p.y(), h);
+                n++;
+            }
+        }
+        if (n < 3) {
+            return;
+        }
+        double[] fx = Arrays.copyOf(xs, n);
+        double[] fy = Arrays.copyOf(ys, n);
+        g.setFill(Color.color(color.getRed(), color.getGreen(), color.getBlue(), 0.18));
+        g.fillPolygon(fx, fy, n);
+        g.setStroke(color);
+        g.setLineWidth(2);
+        g.strokePolygon(fx, fy, n);
+    }
+
+    private void drawLocus(GraphicsContext g, double w, double h, Value.LocusV loc, Color color) {
+        List<Value.PointV> pts = loc.points();
+        if (pts.size() < 2) {
+            return;
+        }
+        g.setStroke(color);
+        g.setLineWidth(2);
+        g.beginPath();
+        g.moveTo(sx(pts.get(0).x(), w), sy(pts.get(0).y(), h));
+        for (int i = 1; i < pts.size(); i++) {
+            g.lineTo(sx(pts.get(i).x(), w), sy(pts.get(i).y(), h));
+        }
+        g.stroke();
+    }
+
+    /** Draws a general conic's zero contour via marching squares. */
+    private void drawConic(GraphicsContext g, double w, double h, Value.ConicV con, Color color) {
+        g.setStroke(color);
+        g.setLineWidth(2);
+        int n = 130;
+        double dx = (vx1 - vx0) / n;
+        double dy = (vy1 - vy0) / n;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                double x = vx0 + i * dx;
+                double y = vy0 + j * dy;
+                marchCell(g, w, h, con, x, y, dx, dy);
+            }
+        }
+    }
+
+    private void marchCell(GraphicsContext g, double w, double h, Value.ConicV c,
+            double x, double y, double dx, double dy) {
+        double f00 = conicValue(c, x, y);
+        double f10 = conicValue(c, x + dx, y);
+        double f11 = conicValue(c, x + dx, y + dy);
+        double f01 = conicValue(c, x, y + dy);
+        List<double[]> pts = new ArrayList<>(4);
+        crossing(pts, x, y, f00, x + dx, y, f10);
+        crossing(pts, x + dx, y, f10, x + dx, y + dy, f11);
+        crossing(pts, x + dx, y + dy, f11, x, y + dy, f01);
+        crossing(pts, x, y + dy, f01, x, y, f00);
+        if (pts.size() >= 2) {
+            g.strokeLine(sx(pts.get(0)[0], w), sy(pts.get(0)[1], h), sx(pts.get(1)[0], w), sy(pts.get(1)[1], h));
+        }
+        if (pts.size() == 4) {
+            g.strokeLine(sx(pts.get(2)[0], w), sy(pts.get(2)[1], h), sx(pts.get(3)[0], w), sy(pts.get(3)[1], h));
+        }
+    }
+
+    private static void crossing(List<double[]> pts, double xa, double ya, double fa,
+            double xb, double yb, double fb) {
+        if ((fa <= 0 && fb > 0) || (fa > 0 && fb <= 0)) {
+            double t = fa / (fa - fb);
+            pts.add(new double[]{xa + t * (xb - xa), ya + t * (yb - ya)});
+        }
+    }
+
+    private static double conicValue(Value.ConicV c, double x, double y) {
+        return c.a() * x * x + c.b() * x * y + c.c() * y * y + c.d() * x + c.e() * y + c.f();
     }
 
     private void drawFunction(GraphicsContext g, double w, double h, GeoObject f, Color color) {

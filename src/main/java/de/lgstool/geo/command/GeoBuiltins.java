@@ -1,8 +1,11 @@
 package de.lgstool.geo.command;
 
 import de.lgstool.geo.expr.BuiltinFunctions;
+import de.lgstool.geo.expr.Differentiator;
 import de.lgstool.geo.expr.EvalException;
+import de.lgstool.geo.expr.FunctionApplier;
 import de.lgstool.geo.expr.Value;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,11 +31,20 @@ public final class GeoBuiltins implements BuiltinFunctions {
             Map.entry("abstand", "distance"),
             Map.entry("ebene", "plane"),
             Map.entry("kugel", "sphere"),
-            Map.entry("schnitt", "intersect"));
+            Map.entry("schnitt", "intersect"),
+            Map.entry("ableitung", "derivative"),
+            Map.entry("tangente", "tangent"),
+            Map.entry("vieleck", "polygon"),
+            Map.entry("winkel", "angle"),
+            Map.entry("ellipse", "ellipse"),
+            Map.entry("hyperbel", "hyperbola"),
+            Map.entry("parabel", "parabola"));
 
     private static final Set<String> NAMES = Set.of(
             "point", "vector", "midpoint", "line", "segment", "circle",
-            "distance", "plane", "sphere", "intersect");
+            "distance", "plane", "sphere", "intersect",
+            "derivative", "integral", "tangent", "polygon", "angle",
+            "ellipse", "hyperbola", "parabola");
 
     @Override
     public boolean has(String name) {
@@ -40,7 +52,7 @@ public final class GeoBuiltins implements BuiltinFunctions {
     }
 
     @Override
-    public Value call(String name, List<Value> args) {
+    public Value call(String name, List<Value> args, FunctionApplier applier) {
         return switch (canonical(name)) {
             case "point" -> point(args);
             case "vector" -> vector(args);
@@ -52,6 +64,14 @@ public final class GeoBuiltins implements BuiltinFunctions {
             case "plane" -> plane(args);
             case "sphere" -> sphere(args);
             case "intersect" -> GeoIntersections.intersect(args);
+            case "derivative" -> derivative(args);
+            case "integral" -> integral(args, applier);
+            case "tangent" -> tangent(args, applier);
+            case "polygon" -> polygon(args);
+            case "angle" -> angle(args);
+            case "ellipse" -> conicFromFoci(args, "Ellipse", true);
+            case "hyperbola" -> conicFromFoci(args, "Hyperbola", false);
+            case "parabola" -> parabola(args);
             default -> throw new EvalException("Unbekannte Funktion '" + name + "'.");
         };
     }
@@ -78,7 +98,7 @@ public final class GeoBuiltins implements BuiltinFunctions {
             return new Value.VectorV(p.x(), p.y(), p.z(), p.is3D());
         }
         if (args.size() == 2 && args.get(0) instanceof Value.PointV a && args.get(1) instanceof Value.PointV b) {
-            return new Value.VectorV(b.x() - a.x(), b.y() - a.y(), b.z() - a.z(), a.is3D() || b.is3D());
+            return new Value.VectorV(b.x() - a.x(), b.y() - a.y(), b.z() - a.z(), a.is3D() || b.is3D(), a);
         }
         if (args.size() == 2) {
             return new Value.VectorV(num(args.get(0)), num(args.get(1)), 0, false);
@@ -187,6 +207,99 @@ public final class GeoBuiltins implements BuiltinFunctions {
             throw new EvalException("Radius darf nicht negativ sein.");
         }
         return new Value.SphereV(new Value.PointV(center.x(), center.y(), center.z(), true), r);
+    }
+
+    private static Value polygon(List<Value> args) {
+        if (args.size() < 3) {
+            throw new EvalException("Polygon braucht mindestens 3 Punkte.");
+        }
+        List<Value.PointV> verts = new ArrayList<>();
+        for (Value v : args) {
+            verts.add(point(v, "Polygon"));
+        }
+        return new Value.PolygonV(List.copyOf(verts));
+    }
+
+    private static Value angle(List<Value> args) {
+        require(args, 3, "Angle");
+        Value.PointV a = point(args.get(0), "Angle");
+        Value.PointV b = point(args.get(1), "Angle");
+        Value.PointV c = point(args.get(2), "Angle");
+        double[] ba = {a.x() - b.x(), a.y() - b.y(), a.z() - b.z()};
+        double[] bc = {c.x() - b.x(), c.y() - b.y(), c.z() - b.z()};
+        double dot = ba[0] * bc[0] + ba[1] * bc[1] + ba[2] * bc[2];
+        double mag = Math.sqrt((ba[0] * ba[0] + ba[1] * ba[1] + ba[2] * ba[2])
+                * (bc[0] * bc[0] + bc[1] * bc[1] + bc[2] * bc[2]));
+        if (mag < 1e-12) {
+            throw new EvalException("Winkel nicht definiert (Punkte fallen zusammen).");
+        }
+        return new Value.NumberV(Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, dot / mag)))));
+    }
+
+    private static Value conicFromFoci(List<Value> args, String where, boolean ellipse) {
+        require(args, 3, where);
+        Value.PointV f1 = point(args.get(0), where);
+        Value.PointV f2 = point(args.get(1), where);
+        double a = num(args.get(2));
+        return ellipse ? GeoConics.ellipse(f1, f2, a) : GeoConics.hyperbola(f1, f2, a);
+    }
+
+    private static Value parabola(List<Value> args) {
+        require(args, 2, "Parabola");
+        Value.PointV focus = point(args.get(0), "Parabola");
+        if (!(args.get(1) instanceof Value.LineV directrix)) {
+            throw new EvalException("Parabola erwartet (Brennpunkt, Leitgerade).");
+        }
+        return GeoConics.parabola(focus, directrix);
+    }
+
+    // ---- calculus --------------------------------------------------------
+
+    private static Value derivative(List<Value> args) {
+        require(args, 1, "Derivative");
+        if (!(args.get(0) instanceof Value.FunctionV f) || f.params().size() != 1) {
+            throw new EvalException("Derivative erwartet eine Funktion f(x).");
+        }
+        String var = f.params().get(0);
+        return new Value.FunctionV(f.params(), Differentiator.differentiate(f.body(), var));
+    }
+
+    private static Value integral(List<Value> args, FunctionApplier applier) {
+        require(args, 3, "Integral");
+        if (!(args.get(0) instanceof Value.FunctionV f) || f.params().size() != 1) {
+            throw new EvalException("Integral erwartet eine Funktion f(x) und Grenzen.");
+        }
+        double a = num(args.get(1));
+        double b = num(args.get(2));
+        int n = 1000;                       // even number of Simpson sub-intervals
+        double h = (b - a) / n;
+        double sum = sample(applier, f, a) + sample(applier, f, b);
+        for (int i = 1; i < n; i++) {
+            sum += (i % 2 == 0 ? 2 : 4) * sample(applier, f, a + i * h);
+        }
+        return new Value.NumberV(sum * h / 3);
+    }
+
+    private static Value tangent(List<Value> args, FunctionApplier applier) {
+        require(args, 2, "Tangent");
+        if (!(args.get(0) instanceof Value.NumberV at) || !(args.get(1) instanceof Value.FunctionV f)
+                || f.params().size() != 1) {
+            throw new EvalException("Tangent erwartet (x0, f).");
+        }
+        double x0 = at.v();
+        double y0 = sample(applier, f, x0);
+        Value.FunctionV df = new Value.FunctionV(f.params(), Differentiator.differentiate(f.body(), f.params().get(0)));
+        double slope = sample(applier, df, x0);
+        // y = y0 + slope·(x - x0)  →  slope·x − y = slope·x0 − y0
+        return new Value.LineV(slope, -1, slope * x0 - y0);
+    }
+
+    private static double sample(FunctionApplier applier, Value.FunctionV f, double x) {
+        Value v = applier.apply(f, List.of(new Value.NumberV(x)));
+        if (v instanceof Value.NumberV n) {
+            return n.v();
+        }
+        throw new EvalException("Funktion liefert keine Zahl.");
     }
 
     // ---- helpers ---------------------------------------------------------

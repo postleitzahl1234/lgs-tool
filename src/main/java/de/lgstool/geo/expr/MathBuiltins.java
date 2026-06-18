@@ -54,7 +54,7 @@ public final class MathBuiltins implements BuiltinFunctions {
     }
 
     @Override
-    public Value call(String name, List<Value> args) {
+    public Value call(String name, List<Value> args, FunctionApplier applier) {
         String key = name.toLowerCase(Locale.ROOT);
         Unary u = unary.get(key);
         if (u != null) {

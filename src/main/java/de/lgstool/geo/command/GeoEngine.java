@@ -127,6 +127,9 @@ public final class GeoEngine {
         if (asSlider(ast) != null) {
             return defineSlider(left, right, (Expr.Call) ast);
         }
+        if (asLocus(ast) != null) {
+            return defineLocus(left, right, (Expr.Call) ast);
+        }
         snapshot();
         GeoObject obj = construction.define(left, right, ast, null);
         return committed(obj);
@@ -141,10 +144,52 @@ public final class GeoEngine {
 
     private GeoResult defineBare(String s) {
         Expr ast = Parser.parse(s);
+        if (asLocus(ast) != null) {
+            return defineLocus(autoName(false), s, (Expr.Call) ast);
+        }
         Value value = construction.evaluate(ast);
         String name = autoName(GeoType.of(value) == GeoType.POINT);
         snapshot();
         GeoObject obj = construction.define(name, s, ast, null);
+        return committed(obj);
+    }
+
+    private GeoResult defineLocus(String name, String source, Expr.Call call) {
+        if (call.args().size() != 2
+                || !(call.args().get(0) instanceof Expr.Ref pRef)
+                || !(call.args().get(1) instanceof Expr.Ref sRef)) {
+            return GeoResult.error("Locus erwartet (Punkt, Parameter).");
+        }
+        GeoObject p = construction.get(pRef.name());
+        GeoObject s = construction.get(sRef.name());
+        if (p == null || !(p.value() instanceof Value.PointV)) {
+            return GeoResult.error("Locus: '" + pRef.name() + "' ist kein Punkt.");
+        }
+        if (s == null || !s.isSlider()) {
+            return GeoResult.error("Locus: '" + sRef.name() + "' ist kein Schieberegler.");
+        }
+        List<Value.PointV> pts = new ArrayList<>();
+        int steps = 200;
+        double min = s.sliderMin();
+        double max = s.sliderMax();
+        Construction work = construction.copy();
+        for (int i = 0; i <= steps; i++) {
+            double val = min + (max - min) * i / steps;
+            try {
+                work.setFreeValue(sRef.name(), new Value.NumberV(val));
+                if (work.get(pRef.name()).value() instanceof Value.PointV pv && !pv.is3D()
+                        && Double.isFinite(pv.x()) && Double.isFinite(pv.y())) {
+                    pts.add(pv);
+                }
+            } catch (RuntimeException ignored) {
+                // skip parameter values where the construction is undefined
+            }
+        }
+        if (pts.isEmpty()) {
+            return GeoResult.error("Locus: keine Punkte berechnet.");
+        }
+        snapshot();
+        GeoObject obj = construction.defineLiteral(name, source, new Value.LocusV(List.copyOf(pts)));
         return committed(obj);
     }
 
@@ -242,7 +287,12 @@ public final class GeoEngine {
                     + GeoFormat.num(o.sliderMax()) + ", " + GeoFormat.num(o.sliderStep()) + ")";
         }
         if (o.kind() == GeoObject.Kind.FREE) {
-            return o.name() + " = " + GeoFormat.value(o.value());
+            // Points/numbers store their (possibly dragged) current value; other free
+            // objects (e.g. a locus) replay from their original source command.
+            if (o.value() instanceof Value.PointV || o.value() instanceof Value.NumberV) {
+                return o.name() + " = " + GeoFormat.value(o.value());
+            }
+            return o.name() + " = " + o.source();
         }
         return o.name() + " = " + o.source();
     }
@@ -319,6 +369,16 @@ public final class GeoEngine {
         if (ast instanceof Expr.Call c) {
             String n = c.name().toLowerCase(Locale.ROOT);
             if (n.equals("slider") || n.equals("schieberegler")) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    private static Expr.Call asLocus(Expr ast) {
+        if (ast instanceof Expr.Call c) {
+            String n = c.name().toLowerCase(Locale.ROOT);
+            if (n.equals("locus") || n.equals("ortslinie")) {
                 return c;
             }
         }

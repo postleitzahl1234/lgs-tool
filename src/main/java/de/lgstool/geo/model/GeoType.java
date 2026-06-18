@@ -12,7 +12,10 @@ public enum GeoType {
     CIRCLE,
     FUNCTION,
     PLANE,
-    SPHERE;
+    SPHERE,
+    POLYGON,
+    CONIC,
+    LOCUS;
 
     public static GeoType of(Value v) {
         return switch (v) {
@@ -26,6 +29,9 @@ public enum GeoType {
             case Value.FunctionV ignored -> FUNCTION;
             case Value.PlaneV ignored -> PLANE;
             case Value.SphereV ignored -> SPHERE;
+            case Value.PolygonV ignored -> POLYGON;
+            case Value.ConicV ignored -> CONIC;
+            case Value.LocusV ignored -> LOCUS;
         };
     }
 }

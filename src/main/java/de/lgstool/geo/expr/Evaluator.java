@@ -166,7 +166,7 @@ public final class Evaluator {
             throw new EvalException("'" + c.name() + "' ist keine Funktion.");
         }
         if (builtins.has(c.name())) {
-            return builtins.call(c.name(), args);
+            return builtins.call(c.name(), args, this::applyFunction);
         }
         throw new EvalException("Unbekannte Funktion '" + c.name() + "'.");
     }

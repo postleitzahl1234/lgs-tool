@@ -16,6 +16,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.FontWeight;
 
 /**
  * The 2D drawing surface: a pannable / zoomable Cartesian plane that renders the 2D
@@ -141,18 +142,29 @@ public final class CoordinatePlane2D extends Pane {
         g.setLineWidth(1.5);
         g.strokeLine(0, sy(0, h), w, sy(0, h));
         g.strokeLine(sx(0, w), 0, sx(0, w), h);
-        g.setFill(Color.web(Theme.TEXT, 0.6));
+
+        // Axis tick numbers — clamped so they stay visible when the origin is off-screen.
+        g.setFill(Color.web(Theme.TEXT, 0.8));
         g.setFont(Font.font("Consolas", 11));
+        double labelBaseline = Math.max(12, Math.min(h - 4, sy(0, h) + 12));
+        double labelX = Math.max(4, Math.min(w - 26, sx(0, w) + 4));
         for (double x = Math.ceil(vx0 / step) * step; x <= vx1; x += step) {
             if (Math.abs(x) > 1e-9) {
-                g.fillText(trim(x), sx(x, w) + 2, sy(0, h) + 12);
+                g.fillText(trim(x), sx(x, w) + 2, labelBaseline);
             }
         }
         for (double y = Math.ceil(vy0 / step) * step; y <= vy1; y += step) {
             if (Math.abs(y) > 1e-9) {
-                g.fillText(trim(y), sx(0, w) + 4, sy(y, h) - 2);
+                g.fillText(trim(y), labelX, sy(y, h) - 2);
             }
         }
+        g.fillText("0", Math.max(4, sx(0, w) + 4), Math.max(12, Math.min(h - 4, sy(0, h) + 12)));
+
+        // Axis names at the ends.
+        g.setFill(Color.web(Theme.ACCENT_PETROL));
+        g.setFont(Font.font("System", FontWeight.BOLD, 14));
+        g.fillText("x", w - 14, Math.max(16, Math.min(h - 6, sy(0, h) - 6)));
+        g.fillText("y", Math.max(6, Math.min(w - 16, sx(0, w) + 6)), 16);
     }
 
     // ---- objects ---------------------------------------------------------

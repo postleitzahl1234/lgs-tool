@@ -15,7 +15,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -34,6 +36,7 @@ public final class AlgebraView extends VBox {
     private final GeoEngine engine;
     private final Runnable onVisibilityChanged;
     private final Map<String, Label> valueLabels = new HashMap<>();
+    private boolean rebuilding;
 
     public AlgebraView(GeoEngine engine, Runnable onVisibilityChanged) {
         this.engine = engine;
@@ -44,17 +47,25 @@ public final class AlgebraView extends VBox {
     }
 
     public void rebuild() {
-        getChildren().clear();
-        valueLabels.clear();
-        List<GeoObject> objs = engine.construction().objects();
-        if (objs.isEmpty()) {
-            Label empty = new Label(I18n.t("graph.noObjects"));
-            empty.setStyle("-fx-text-fill: " + Theme.TEXT + "; -fx-padding: 8;");
-            getChildren().add(empty);
+        if (rebuilding) {
             return;
         }
-        for (int i = 0; i < objs.size(); i++) {
-            getChildren().add(row(objs.get(i), i));
+        rebuilding = true;
+        try {
+            getChildren().clear();
+            valueLabels.clear();
+            List<GeoObject> objs = engine.construction().objects();
+            if (objs.isEmpty()) {
+                Label empty = new Label(I18n.t("graph.noObjects"));
+                empty.setStyle("-fx-text-fill: " + Theme.TEXT + "; -fx-padding: 8;");
+                getChildren().add(empty);
+                return;
+            }
+            for (int i = 0; i < objs.size(); i++) {
+                getChildren().add(row(objs.get(i), i));
+            }
+        } finally {
+            rebuilding = false;
         }
     }
 
@@ -81,7 +92,7 @@ public final class AlgebraView extends VBox {
 
         Label text = new Label(o.name() + " = " + GeoFormat.value(o.value()));
         text.setStyle("-fx-text-fill: " + Theme.TEXT + "; -fx-font-family: 'Consolas', monospace;");
-        Tooltip.install(text, new Tooltip(o.source()));
+        Tooltip.install(text, new Tooltip(I18n.t("graph.editHint")));
         valueLabels.put(o.name(), text);
 
         Region spacer = new Region();
@@ -93,12 +104,49 @@ public final class AlgebraView extends VBox {
 
         HBox header = new HBox(6, visible, swatch, text, spacer, delete);
         header.setAlignment(Pos.CENTER_LEFT);
+        text.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                startEdit(o, text, header);
+            }
+        });
 
         VBox cell = new VBox(2, header);
         if (o.isSlider() && o.value() instanceof Value.NumberV n) {
             cell.getChildren().add(sliderFor(o, n.v()));
         }
         return cell;
+    }
+
+    /** Replaces an object's label with an inline editor for its definition (double-click). */
+    private void startEdit(GeoObject o, Label text, HBox header) {
+        TextField editor = new TextField(engine.editableLine(o));
+        editor.setStyle("-fx-font-family: 'Consolas', monospace;");
+        HBox.setHgrow(editor, Priority.ALWAYS);
+        int idx = header.getChildren().indexOf(text);
+        if (idx < 0) {
+            return;
+        }
+        header.getChildren().set(idx, editor);
+        editor.requestFocus();
+        editor.selectAll();
+        editor.setOnAction(e -> {
+            String line = editor.getText().trim();
+            if (!line.isEmpty()) {
+                engine.execute(line);   // redefine -> structureChanged -> rebuild()
+            } else {
+                rebuild();
+            }
+        });
+        editor.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ESCAPE) {
+                rebuild();
+            }
+        });
+        editor.focusedProperty().addListener((obs, was, is) -> {
+            if (!is) {
+                rebuild();
+            }
+        });
     }
 
     private Slider sliderFor(GeoObject o, double value) {

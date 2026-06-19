@@ -129,4 +129,34 @@ class GeoEngineTest {
         ok("A = (1, 2)");
         assertFalse(engine.execute("A = A + 1").ok());            // self-cycle
     }
+
+    @Test
+    @DisplayName("functions and sliders notify the view so they render immediately")
+    void functionAndSliderNotifyView() {
+        int[] structure = {0};
+        engine.setView(new GeoView() {
+            @Override
+            public void structureChanged() {
+                structure[0]++;
+            }
+
+            @Override
+            public void valuesChanged() {
+            }
+        });
+        engine.execute("f(x) = x^2");
+        int afterFunction = structure[0];
+        assertTrue(afterFunction >= 1, "function definition should notify the view");
+        engine.execute("s = Slider(0, 5)");
+        assertTrue(structure[0] > afterFunction, "slider definition should notify the view");
+    }
+
+    @Test
+    @DisplayName("editableLine round-trips an object's definition")
+    void editableLineRoundTrips() {
+        ok("A = (1, 2)");
+        assertEquals("A = (1, 2)", engine.editableLine(engine.construction().get("A")));
+        ok("f(x) = x^2");
+        assertTrue(engine.editableLine(engine.construction().get("f")).contains("f(x)"));
+    }
 }

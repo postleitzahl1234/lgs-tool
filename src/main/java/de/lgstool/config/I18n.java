@@ -88,6 +88,7 @@ public final class I18n {
         m.put("graph.title", "Zeichenblatt");
         m.put("graph.objects", "Objekte");
         m.put("graph.noObjects", "Noch keine Objekte.\nTippe z. B. A=(1,2)");
+        m.put("graph.editHint", "Doppelklick zum Bearbeiten der Definition");
         m.put("graph.clear", "Leeren");
         m.put("graph.log", "Meldungen");
         m.put("graph.view2d", "2D");
@@ -407,6 +408,7 @@ public final class I18n {
         m.put("graph.title", "Graphing");
         m.put("graph.objects", "Objects");
         m.put("graph.noObjects", "No objects yet.\nTry e.g. A=(1,2)");
+        m.put("graph.editHint", "Double-click to edit the definition");
         m.put("graph.clear", "Clear");
         m.put("graph.log", "Messages");
         m.put("graph.view2d", "2D");

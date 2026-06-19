@@ -140,6 +140,7 @@ public final class GeoEngine {
         Expr ast = Parser.parse(right);
         snapshot();
         GeoObject obj = construction.define(name, name + "(" + String.join(", ", params) + ") = " + right, ast, params);
+        view.structureChanged();
         return GeoResult.ok(obj.name() + "(" + String.join(", ", params) + ") = " + right);
     }
 
@@ -208,6 +209,7 @@ public final class GeoEngine {
         snapshot();
         construction.define(name, source, new Expr.Num(min), null);
         construction.get(name).configureSlider(min, max, step);
+        view.structureChanged();
         return GeoResult.ok(I18n.t("geo.sliderCreated", name, GeoFormat.num(min), GeoFormat.num(max)));
     }
 
@@ -269,6 +271,11 @@ public final class GeoEngine {
         construction = temp.construction;
         view.structureChanged();
         return GeoResult.ok(I18n.t("geo.loaded", name, construction.size()));
+    }
+
+    /** The editable input line that recreates an object (used by the algebra view). */
+    public String editableLine(GeoObject o) {
+        return replayLine(o);
     }
 
     private List<String> exportLines() {

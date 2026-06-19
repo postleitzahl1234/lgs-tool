@@ -131,6 +131,7 @@ public final class I18n {
         m.put("settings.decimals", "Dezimalzahlen");
         m.put("settings.language", "Sprache");
         m.put("settings.darkMode", "Dunkles Design");
+        m.put("settings.suggestions", "Befehlsvorschläge (Tab vervollständigt)");
         m.put("settings.precision", "Dezimalstellen:");
         m.put("settings.about", "LGS-Tool · exakte Bruch-Arithmetik · 1D/2D/3D-Visualisierung");
         m.put("common.close", "Schließen");
@@ -356,6 +357,22 @@ public final class I18n {
         m.put("g.copylog", "Kopiert das Log in die Zwischenablage.");
         m.put("g.saveplot", "Speichert das Koordinatensystem als PNG.");
         m.put("g.labels", "Schaltet die Achsenbeschriftung (Zahlen + Namen) um.");
+        m.put("gg.point", "Punkt definieren (2D/3D). Freie Punkte sind mit der Maus ziehbar.");
+        m.put("gg.func", "Funktion bzw. Fläche definieren; wird automatisch geplottet.");
+        m.put("gg.slider", "Schieberegler-Zahl; in der Objektliste ziehbar.");
+        m.put("gg.line", "Gerade durch zwei Punkte; Strecke zwischen zwei Punkten.");
+        m.put("gg.circle", "Kreis um M mit Radius r; Mittelpunkt zweier Punkte.");
+        m.put("gg.intersect", "Schnittpunkt zweier Objekte; Abstand zweier Punkte.");
+        m.put("gg.shapes", "Vektor (von A nach B), Vieleck, Winkel (in Grad).");
+        m.put("gg.calc", "Ableitung, bestimmtes Integral, Tangente an f bei x0.");
+        m.put("gg.conic", "Kegelschnitte aus Brennpunkten bzw. Brennpunkt + Leitgerade.");
+        m.put("gg.locus", "Ortslinie: Bahn von Punkt P, während Parameter s läuft.");
+        m.put("gg.space", "3D: Ebene durch 3 Punkte; Kugel um M mit Radius r.");
+        m.put("gg.meta", "Objekt löschen; alles leeren; rückgängig/wiederholen; auflisten.");
+        m.put("gg.io", "Zeichnung speichern/laden (./geo/name.geo).");
+        m.put("hk.tab", "Befehlsvorschlag übernehmen (Autovervollständigen)");
+        m.put("hk.updown", "Vorschläge / Verlauf in der Befehlszeile durchgehen");
+        m.put("hk.semicolon", "Mehrere Befehle in einer Zeile trennen");
     }
 
     private static Map<String, String> english() {
@@ -433,6 +450,7 @@ public final class I18n {
         m.put("settings.decimals", "Decimals");
         m.put("settings.language", "Language");
         m.put("settings.darkMode", "Dark theme");
+        m.put("settings.suggestions", "Command suggestions (Tab completes)");
         m.put("settings.precision", "Decimal digits:");
         m.put("settings.about", "LGS-Tool · exact fraction arithmetic · 1D/2D/3D visualization");
         m.put("common.close", "Close");
@@ -658,5 +676,21 @@ public final class I18n {
         m.put("g.copylog", "Copies the log to the clipboard.");
         m.put("g.saveplot", "Saves the coordinate system as PNG.");
         m.put("g.labels", "Toggles axis labels (numbers + names).");
+        m.put("gg.point", "Define a point (2D/3D). Free points can be dragged.");
+        m.put("gg.func", "Define a function or surface; it is plotted automatically.");
+        m.put("gg.slider", "Slider number; draggable in the object list.");
+        m.put("gg.line", "Line through two points; segment between two points.");
+        m.put("gg.circle", "Circle around M with radius r; midpoint of two points.");
+        m.put("gg.intersect", "Intersection of two objects; distance between two points.");
+        m.put("gg.shapes", "Vector (A to B), polygon, angle (in degrees).");
+        m.put("gg.calc", "Derivative, definite integral, tangent to f at x0.");
+        m.put("gg.conic", "Conics from foci, or from focus + directrix.");
+        m.put("gg.locus", "Locus: the path of point P as parameter s varies.");
+        m.put("gg.space", "3D: plane through 3 points; sphere around M with radius r.");
+        m.put("gg.meta", "Delete an object; clear all; undo/redo; list.");
+        m.put("gg.io", "Save/load a drawing (./geo/name.geo).");
+        m.put("hk.tab", "Accept command suggestion (autocomplete)");
+        m.put("hk.updown", "Cycle suggestions / history in the command line");
+        m.put("hk.semicolon", "Separate multiple commands on one line");
     }
 }

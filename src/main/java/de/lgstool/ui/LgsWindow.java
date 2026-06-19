@@ -56,7 +56,7 @@ public final class LgsWindow {
         logPane.setPrefWidth(340);
         logPane.setMinWidth(280);
 
-        CommandBar bar = new CommandBar("[LGS]", line -> controller.runLgs(lgs.name(), line));
+        CommandBar bar = new CommandBar("[LGS]", line -> controller.runLgs(lgs.name(), line), Suggestions.lgs());
 
         // The glass pane (matrix viewport) occupies 70% of the center area and is
         // centered, so it reads as a movable "pane" over a larger matrix.

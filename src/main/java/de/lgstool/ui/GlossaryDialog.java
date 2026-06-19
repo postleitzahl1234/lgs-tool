@@ -81,6 +81,9 @@ public final class GlossaryDialog {
     private static Hotkey[] hotkeys() {
         return new Hotkey[]{
                 new Hotkey(I18n.t("hk.keyEnter"), I18n.t("hk.enter")),
+                new Hotkey("Tab", I18n.t("hk.tab")),
+                new Hotkey("↑ / ↓", I18n.t("hk.updown")),
+                new Hotkey(";", I18n.t("hk.semicolon")),
                 new Hotkey("F11", I18n.t("hk.f11")),
                 new Hotkey("Esc", I18n.t("hk.esc")),
                 new Hotkey(I18n.t("hk.keyWheel"), I18n.t("hk.wheel")),
@@ -133,7 +136,21 @@ public final class GlossaryDialog {
                 new Row("examples([name]);", "g.examples", "HAUPT"),
                 new Row("savelog(name); / copylog();", "g.savelog", "LGS"),
                 new Row("saveplot(name);", "g.saveplot", "LGS"),
-                new Row("labels();", "g.labels", "LGS")
+                new Row("labels();", "g.labels", "LGS"),
+
+                new Row("A=(1,2); B=(1,2,3)", "gg.point", "GEO"),
+                new Row("f(x)=…; g(x,y)=…", "gg.func", "GEO"),
+                new Row("Slider(min, max [, step])", "gg.slider", "GEO"),
+                new Row("Line(A,B); Segment(A,B)", "gg.line", "GEO"),
+                new Row("Circle(M,r); Midpoint(A,B)", "gg.circle", "GEO"),
+                new Row("Intersect(a,b); Distance(A,B)", "gg.intersect", "GEO"),
+                new Row("Vector(A,B); Polygon(A,…); Angle(A,B,C)", "gg.shapes", "GEO"),
+                new Row("Derivative(f); Integral(f,a,b); Tangent(x0,f)", "gg.calc", "GEO"),
+                new Row("Ellipse(F1,F2,a); Hyperbola(…); Parabola(F,line)", "gg.conic", "GEO"),
+                new Row("Locus(P, s)", "gg.locus", "GEO"),
+                new Row("Plane(A,B,C); Sphere(M,r)", "gg.space", "GEO"),
+                new Row("Delete(obj); clear; undo; redo; list", "gg.meta", "GEO"),
+                new Row("save(name); load(name)", "gg.io", "GEO")
         };
     }
 }

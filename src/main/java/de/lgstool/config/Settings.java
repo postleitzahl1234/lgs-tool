@@ -18,4 +18,7 @@ public final class Settings {
 
     /** Number of significant digits used when displaying decimals. */
     public static int decimalPrecision = 6;
+
+    /** Whether the command line shows live command suggestions while typing. */
+    public static boolean suggestionsEnabled = true;
 }

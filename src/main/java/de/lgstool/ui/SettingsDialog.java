@@ -75,6 +75,10 @@ public final class SettingsDialog {
             controller.changeTheme(darkMode.isSelected());
         });
 
+        CheckBox suggestions = new CheckBox(I18n.t("settings.suggestions"));
+        suggestions.setSelected(Settings.suggestionsEnabled);
+        suggestions.selectedProperty().addListener((o, a, b) -> Settings.suggestionsEnabled = b);
+
         Spinner<Integer> precision = new Spinner<>(1, 15, Settings.decimalPrecision);
         precision.setMaxWidth(90);
         precision.valueProperty().addListener((o, a, b) -> Settings.decimalPrecision = b);
@@ -98,7 +102,7 @@ public final class SettingsDialog {
         close.setStyle("-fx-background-color: " + Theme.ACCENT_PETROL + "; -fx-text-fill: white;");
         close.setOnAction(e -> stage.close());
 
-        VBox root = new VBox(14, title, languageLabel, language, fullscreen, darkMode,
+        VBox root = new VBox(14, title, languageLabel, language, fullscreen, darkMode, suggestions,
                 displayLabel, frac, dec, precisionRow, about, close);
         root.setPadding(new Insets(24));
         root.setStyle("-fx-background-color: " + Theme.BACKGROUND + ";");

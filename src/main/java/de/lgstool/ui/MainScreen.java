@@ -70,7 +70,7 @@ public final class MainScreen {
         glossary.setOnAction(e -> controller.openGlossary());
         HBox options = new HBox(8, settings, glossary);
 
-        CommandBar mainBar = new CommandBar("[HAUPT]", controller::runMain);
+        CommandBar mainBar = new CommandBar("[HAUPT]", controller::runMain, Suggestions.lgs());
 
         statusLog.setPrefHeight(200);
         statusLog.setMinHeight(140);

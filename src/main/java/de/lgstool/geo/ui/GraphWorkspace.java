@@ -7,6 +7,7 @@ import de.lgstool.geo.command.GeoResult;
 import de.lgstool.geo.command.GeoView;
 import de.lgstool.ui.CommandBar;
 import de.lgstool.ui.LogPane;
+import de.lgstool.ui.Suggestions;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -53,7 +54,7 @@ public final class GraphWorkspace implements GeoView {
         root.setTop(topBar(onBack));
         root.setLeft(leftPanel());
         root.setCenter(viewStack);
-        root.setBottom(new CommandBar("[GEO]", this::run));
+        root.setBottom(new CommandBar("[GEO]", this::run, Suggestions.geo()));
     }
 
     public Parent getRoot() {

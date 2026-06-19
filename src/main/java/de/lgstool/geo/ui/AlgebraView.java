@@ -20,7 +20,6 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 
@@ -92,17 +91,17 @@ public final class AlgebraView extends VBox {
 
         Label text = new Label(o.name() + " = " + GeoFormat.value(o.value()));
         text.setStyle("-fx-text-fill: " + Theme.TEXT + "; -fx-font-family: 'Consolas', monospace;");
+        text.setWrapText(true);
+        text.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(text, Priority.ALWAYS);
         Tooltip.install(text, new Tooltip(I18n.t("graph.editHint")));
         valueLabels.put(o.name(), text);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button delete = new Button("×");
         delete.setStyle("-fx-text-fill: #B23A48; -fx-font-weight: bold;");
         delete.setOnAction(e -> engine.execute("Delete(" + o.name() + ")"));
 
-        HBox header = new HBox(6, visible, swatch, text, spacer, delete);
+        HBox header = new HBox(6, visible, swatch, text, delete);
         header.setAlignment(Pos.CENTER_LEFT);
         text.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {

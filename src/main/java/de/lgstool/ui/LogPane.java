@@ -22,7 +22,7 @@ public final class LogPane extends VBox {
         title.setStyle("-fx-font-weight: bold; -fx-text-fill: " + Theme.ACCENT_PETROL + ";");
 
         area.setEditable(false);
-        area.setWrapText(false);
+        area.setWrapText(true);
         area.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 13px;");
         VBox.setVgrow(area, Priority.ALWAYS);
 

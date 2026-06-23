@@ -150,9 +150,9 @@ public final class Workspace implements GeoView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox bar = new HBox(8, title, spacer, viewToggle(),
-                control("+", () -> plane.zoom(1.2)),
-                control("−", () -> plane.zoom(1 / 1.2)),
-                control(I18n.t("lgs.center"), plane::fit),
+                control("+", () -> zoomActive(1.2)),
+                control("−", () -> zoomActive(1 / 1.2)),
+                control(I18n.t("lgs.center"), this::fitActive),
                 control(I18n.t("graph.exportPng"), this::exportPng),
                 control(I18n.t("graph.spreadsheet"), this::openSpreadsheet),
                 control(I18n.t("graph.clear"), () -> runOne("clear")),
@@ -236,6 +236,23 @@ public final class Workspace implements GeoView {
         b.setStyle("-fx-background-color: " + Theme.ACCENT_PETROL + "; -fx-text-fill: white; -fx-font-weight: bold;");
         b.setOnAction(e -> action.run());
         return b;
+    }
+
+    /** Zoom/fit act on whichever view (2D plane or 3D scene) is currently shown. */
+    private void zoomActive(double factor) {
+        if (threeD) {
+            scene3d.zoom(factor);
+        } else {
+            plane.zoom(factor);
+        }
+    }
+
+    private void fitActive() {
+        if (threeD) {
+            scene3d.fit();
+        } else {
+            plane.fit();
+        }
     }
 
     private void openSpreadsheet() {

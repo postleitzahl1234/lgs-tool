@@ -66,6 +66,20 @@ public final class Scene3DView extends Pane {
         installMouseHandlers();
     }
 
+    /** Zooms the scene by scaling object size (factor &gt; 1 zooms in). */
+    public void zoom(double factor) {
+        scale = clamp(scale * factor, 6, 300);
+        redraw();
+    }
+
+    /** Resets zoom and orientation to the default view. */
+    public void fit() {
+        scale = 36;
+        rotateX.setAngle(24);
+        rotateY.setAngle(-32);
+        redraw();
+    }
+
     public void redraw() {
         world.getChildren().clear();
         addAxes();
@@ -282,9 +296,11 @@ public final class Scene3DView extends Pane {
             dragX = e.getX();
             dragY = e.getY();
         });
-        subScene.setOnScroll(e -> {
-            scale = clamp(scale * (e.getDeltaY() > 0 ? 1.1 : 1 / 1.1), 6, 300);
-            redraw();
+        // Scroll-to-zoom on the pane itself (events bubble up from the SubScene, so this
+        // fires reliably whether or not the SubScene is the direct target).
+        setOnScroll(e -> {
+            zoom(e.getDeltaY() > 0 ? 1.1 : 1 / 1.1);
+            e.consume();
         });
     }
 

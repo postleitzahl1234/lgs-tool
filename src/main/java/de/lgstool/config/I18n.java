@@ -107,6 +107,7 @@ public final class I18n {
         m.put("geo.undefined", "undefiniert");
         m.put("geo.notEquationXY", "Gleichung muss x oder y enthalten (z. B. x^2 + y^2 = 1).");
         m.put("geo.createSize", "create erwartet positive Maße, z. B. create(M, 3*2).");
+        m.put("geo.createMax", "Größtes LGS ist 100×100.");
         m.put("geo.noMatrix", "Keine Matrix vorhanden — zuerst create(name, Breite*Höhe).");
         m.put("geo.notMatrix", "''{0}'' ist keine Matrix.");
         m.put("geo.exists", "Objekt ''{0}'' existiert bereits.");
@@ -152,6 +153,7 @@ public final class I18n {
         m.put("settings.suggestions", "Befehlsvorschläge (Tab vervollständigt)");
         m.put("settings.snap", "Punkte am Raster einrasten (oder Umschalt beim Ziehen)");
         m.put("settings.precision", "Dezimalstellen:");
+        m.put("settings.sliderStepSeconds", "Slider-Animation (Sekunden/Schritt):");
         m.put("settings.about", "LGS-Tool · exakte Bruch-Arithmetik · 1D/2D/3D-Visualisierung");
         m.put("common.close", "Schließen");
         m.put("common.cancel", "Abbrechen");
@@ -395,7 +397,7 @@ public final class I18n {
         m.put("gg.locus", "Ortslinie: Bahn von Punkt P, während Parameter s läuft.");
         m.put("gg.space", "3D: Ebene durch 3 Punkte; Kugel um M mit Radius r.");
         m.put("gg.matrix", "Matrizen (exakte Brüche): Lösen, RREF, Determinante, Inverse, Transponierte.");
-        m.put("gg.matrixcreate", "Leere, bearbeitbare Matrix erstellen (Breite*Höhe); rand füllt sie mit Zufallszahlen.");
+        m.put("gg.matrixcreate", "Bearbeitbares LGS erstellen (Variablen*Zeilen; +Skalarspalte); ein-/ausklappbar; rand füllt es zufällig.");
         m.put("gg.list", "Listen & Folgen: Summe, Mittelwert, Element, Sortieren.");
         m.put("gg.implicit", "Implizite Gleichung in x und y; zeichnet die Nullstellenkurve (z. B. Kreis).");
         m.put("gg.stats", "Statistik & Regression: Median, Quartile, Varianz, SD, Modus, FitLine, FitPoly.");
@@ -463,6 +465,7 @@ public final class I18n {
         m.put("geo.undefined", "undefined");
         m.put("geo.notEquationXY", "Equation must contain x or y (e.g. x^2 + y^2 = 1).");
         m.put("geo.createSize", "create expects positive sizes, e.g. create(M, 3*2).");
+        m.put("geo.createMax", "Largest linear system is 100×100.");
         m.put("geo.noMatrix", "No matrix yet — first create(name, width*height).");
         m.put("geo.notMatrix", "''{0}'' is not a matrix.");
         m.put("workspace.renameHint", "Double-click to rename");
@@ -509,6 +512,7 @@ public final class I18n {
         m.put("settings.suggestions", "Command suggestions (Tab completes)");
         m.put("settings.snap", "Snap points to the grid (or hold Shift while dragging)");
         m.put("settings.precision", "Decimal digits:");
+        m.put("settings.sliderStepSeconds", "Slider animation (seconds/step):");
         m.put("settings.about", "LGS-Tool · exact fraction arithmetic · 1D/2D/3D visualization");
         m.put("common.close", "Close");
         m.put("common.cancel", "Cancel");
@@ -752,7 +756,7 @@ public final class I18n {
         m.put("gg.locus", "Locus: the path of point P as parameter s varies.");
         m.put("gg.space", "3D: plane through 3 points; sphere around M with radius r.");
         m.put("gg.matrix", "Matrices (exact fractions): Solve, RREF, Det, Inverse, Transpose.");
-        m.put("gg.matrixcreate", "Create an empty, editable matrix (width*height); rand fills it with random numbers.");
+        m.put("gg.matrixcreate", "Create an editable linear system (variables*rows; +RHS column); collapsible; rand fills it randomly.");
         m.put("gg.implicit", "Implicit equation in x and y; plots the zero-set curve (e.g. a circle).");
         m.put("gg.stats", "Statistics & regression: Median, quartiles, Variance, SD, Mode, FitLine, FitPoly.");
         m.put("gg.higher", "Higher-order lists: Map, KeepIf, CountIf, Zip, Take, Union, Intersection.");

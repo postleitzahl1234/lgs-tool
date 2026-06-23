@@ -1,6 +1,7 @@
 package de.lgstool.geo.ui;
 
 import de.lgstool.config.I18n;
+import de.lgstool.config.Settings;
 import de.lgstool.config.Theme;
 import de.lgstool.geo.command.GeoEngine;
 import de.lgstool.geo.command.GeoFormat;
@@ -8,8 +9,10 @@ import de.lgstool.geo.expr.Value;
 import de.lgstool.geo.model.GeoObject;
 import de.lgstool.geo.model.Palette;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -23,6 +26,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
@@ -43,6 +47,7 @@ public final class AlgebraView extends VBox {
     private final GeoEngine engine;
     private final Runnable onVisibilityChanged;
     private final Map<String, Label> valueLabels = new HashMap<>();
+    private final Set<String> expanded = new HashSet<>();   // matrices/LGS whose table is open
     private boolean rebuilding;
 
     public AlgebraView(GeoEngine engine, Runnable onVisibilityChanged) {
@@ -97,7 +102,49 @@ public final class AlgebraView extends VBox {
             int eq = src.indexOf('=');
             return eq >= 0 ? src.substring(eq + 1).trim() : src;
         }
+        if (o.value() instanceof Value.MatrixV m) {
+            return matrixSummary(o, m);
+        }
         return GeoFormat.value(o.value());
+    }
+
+    /** A one-line summary for a (collapsed) matrix/LGS row. */
+    private static String matrixSummary(GeoObject o, Value.MatrixV m) {
+        if (o.isLinearSystem()) {
+            return "LGS " + m.rowCount() + "×" + (m.colCount() - 1) + " (+b)";
+        }
+        return "Matrix " + m.rowCount() + "×" + m.colCount();
+    }
+
+    private void toggleExpanded(String name) {
+        if (!expanded.remove(name)) {
+            expanded.add(name);
+        }
+        rebuild();
+    }
+
+    /**
+     * A square, pannable window holding the editable matrix table; drag to move around
+     * (like the coordinate system) and scroll for large systems. Sized to the content but
+     * capped square so a 100×100 system stays a fixed square with scrollbars.
+     */
+    private ScrollPane matrixWindow(GeoObject o, Value.MatrixV m, String colorHex) {
+        ScrollPane sp = new ScrollPane(matrixGrid(o, m, colorHex));
+        sp.setPannable(true);
+        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        double contentW = m.colCount() * 48 + 22;
+        double contentH = m.rowCount() * 32 + 16;
+        double side = Math.min(Math.max(contentW, contentH), 300);   // square, capped at 300px
+        sp.setPrefViewportWidth(side);
+        sp.setPrefViewportHeight(side);
+        sp.setMaxWidth(side + 6);
+        sp.setStyle("-fx-background: derive(" + Theme.BACKGROUND + ", 12%);"
+                + " -fx-background-color: derive(" + Theme.BACKGROUND + ", 12%);"
+                + " -fx-border-color: derive(" + Theme.ACCENT_SAGE + ", -5%); -fx-border-width: 1;"
+                + " -fx-border-radius: 4; -fx-background-radius: 4;");
+        VBox.setMargin(sp, new Insets(2, 0, 6, 18));
+        return sp;
     }
 
     private VBox row(GeoObject o) {
@@ -139,23 +186,24 @@ public final class AlgebraView extends VBox {
             }
         });
         value.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) {
+            if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 1) {
                 startRedefine(o, value, header);
             }
         });
 
         VBox cell = new VBox(2, header);
         if (o.value() instanceof Value.MatrixV m) {
-            // Wrap the grid so a wide augmented matrix [A|b] scrolls horizontally instead of
-            // having its right-hand (b) column clipped by the panel's fit-to-width.
-            ScrollPane gridScroll = new ScrollPane(matrixGrid(o, m, colorHex));
-            gridScroll.setFitToHeight(true);
-            gridScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-            gridScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            gridScroll.setPrefViewportHeight(m.rowCount() * 32 + 18);   // headroom for the h-scrollbar
-            gridScroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;"
-                    + " -fx-padding: 0;");
-            cell.getChildren().add(gridScroll);
+            // A matrix/LGS collapses behind an arrow; expanded it opens a square, pannable
+            // table (move around like the coordinate system) where every cell is editable.
+            boolean open = expanded.contains(o.name());
+            Button arrow = new Button(open ? "▾" : "▸");
+            arrow.setStyle("-fx-background-color: transparent; -fx-text-fill: " + Theme.ACCENT_PETROL
+                    + "; -fx-font-weight: bold; -fx-padding: 0 4 0 0;");
+            arrow.setOnAction(e -> toggleExpanded(o.name()));
+            header.getChildren().add(0, arrow);
+            if (open) {
+                cell.getChildren().add(matrixWindow(o, m, colorHex));
+            }
         }
         if (o.isSlider() && o.value() instanceof Value.NumberV n) {
             cell.getChildren().add(sliderFor(o, n.v()));
@@ -182,7 +230,7 @@ public final class AlgebraView extends VBox {
             rowBox.setPadding(new Insets(2, 8, 2, 8));
             rowBox.setBackground(new Background(new BackgroundFill(tint, new CornerRadii(4), Insets.EMPTY)));
             for (int j = 0; j < m.colCount(); j++) {
-                rowBox.getChildren().add(matrixCell(o, i, j, m.rows()[i][j].toString()));
+                rowBox.getChildren().add(matrixCell(o, i, j, GeoFormat.matrixEntryText(o.source(), m, i, j)));
             }
             grid.getChildren().add(rowBox);
         }
@@ -220,11 +268,12 @@ public final class AlgebraView extends VBox {
         if (current == null || !(current.value() instanceof Value.MatrixV m)) {
             return;
         }
-        // No-op if the entry is unchanged (avoids needless redefine churn while tabbing).
-        if (m.rows()[row][col].toString().equals(entry.trim())) {
+        String currentEntry = GeoFormat.matrixEntryText(current.source(), m, row, col).trim();
+        String nextEntry = entry == null || entry.isBlank() ? "0" : entry.trim();
+        if (currentEntry.equals(nextEntry)) {
             return;
         }
-        engine.execute(o.name() + " = " + GeoFormat.matrixLiteralWith(m, row, col, entry));
+        engine.editMatrixCell(o.name(), row, col, entry);
     }
 
     private void startRename(GeoObject o, Label name, HBox header) {
@@ -325,7 +374,8 @@ public final class AlgebraView extends VBox {
 
             @Override
             public void handle(long now) {
-                if (now - last < 30_000_000L) {   // ~33 fps
+                long intervalNanos = Math.max(1_000_000L, (long) (Settings.sliderSecondsPerStep * 1_000_000_000L));
+                if (now - last < intervalNanos) {
                     return;
                 }
                 last = now;

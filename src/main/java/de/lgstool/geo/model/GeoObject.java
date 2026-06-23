@@ -33,6 +33,7 @@ public final class GeoObject {
     private String colorHex;
     private boolean defined = true;
     private String undefinedReason;
+    private boolean linearSystem;   // an augmented matrix created as a linear system (extra RHS column)
 
     private boolean slider;
     private double sliderMin;
@@ -113,6 +114,15 @@ public final class GeoObject {
         this.undefinedReason = reason;
     }
 
+    /** Whether this matrix is an augmented linear system (last column = right-hand-side scalars). */
+    public boolean isLinearSystem() {
+        return linearSystem;
+    }
+
+    public void setLinearSystem(boolean linearSystem) {
+        this.linearSystem = linearSystem;
+    }
+
     public boolean isVisible() {
         return visible;
     }
@@ -163,6 +173,7 @@ public final class GeoObject {
         c.colorHex = colorHex;
         c.defined = defined;
         c.undefinedReason = undefinedReason;
+        c.linearSystem = linearSystem;
         c.slider = slider;
         c.sliderMin = sliderMin;
         c.sliderMax = sliderMax;

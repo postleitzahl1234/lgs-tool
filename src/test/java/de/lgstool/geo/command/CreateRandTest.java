@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** create(name, width*height) and rand([name,] lo, hi). */
+/** create(name, variables*rows) and rand([name,] lo, hi). */
 class CreateRandTest {
 
     private GeoEngine engine;
@@ -28,13 +28,15 @@ class CreateRandTest {
     }
 
     @Test
-    @DisplayName("create makes a width*height zero matrix (height rows, width cols)")
+    @DisplayName("create makes an editable augmented LGS table with an extra RHS column")
     void createZeroMatrix() {
         ok("create(M, 3*2)");
         Value.MatrixV m = matrix("M");
-        assertEquals(2, m.rowCount());   // height
-        assertEquals(3, m.colCount());   // width
+        assertEquals(2, m.rowCount());   // rows
+        assertEquals(4, m.colCount());   // 3 variables + RHS
         assertEquals("0", m.rows()[0][0].toString());
+        assertEquals("0", m.rows()[0][3].toString());
+        assertTrue(engine.construction().get("M").isLinearSystem());
     }
 
     @Test
@@ -58,8 +60,8 @@ class CreateRandTest {
         ok("rand(A, 0, 0)");            // all zeros
         Value.MatrixV m = matrix("A");
         assertEquals(1, m.rowCount());
-        assertEquals(4, m.colCount());
-        assertEquals("0", m.rows()[0][3].toString());
+        assertEquals(5, m.colCount());
+        assertEquals("0", m.rows()[0][4].toString());
     }
 
     @Test

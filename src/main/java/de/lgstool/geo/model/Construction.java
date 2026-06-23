@@ -81,6 +81,7 @@ public final class Construction {
         if (existing != null) {
             fresh.setVisible(existing.isVisible());
             fresh.setColorHex(existing.colorHex());
+            fresh.setLinearSystem(existing.isLinearSystem());
         } else {
             fresh.setColorHex(Palette.randomHex());
         }

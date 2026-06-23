@@ -37,6 +37,9 @@ public final class Settings {
     /** Whether dragging a free point snaps it to the nearest grid line. */
     public static boolean snapToGrid = false;
 
+    /** Seconds between automatic slider animation steps. */
+    public static double sliderSecondsPerStep = 0.03;
+
     private static final Path FILE = Path.of(System.getProperty("user.home"), ".lgstool", "settings.properties");
 
     /** Loads settings from disk and applies the persisted language and theme. */
@@ -55,6 +58,7 @@ public final class Settings {
         suggestionsEnabled = bool(p, "suggestionsEnabled", suggestionsEnabled);
         snapToGrid = bool(p, "snapToGrid", snapToGrid);
         decimalPrecision = clampInt(p.getProperty("decimalPrecision"), decimalPrecision, 1, 15);
+        sliderSecondsPerStep = clampDouble(p.getProperty("sliderSecondsPerStep"), sliderSecondsPerStep, 0.01, 10.0);
         Theme.setDark(bool(p, "darkMode", Theme.isDark()));
         String lang = p.getProperty("language");
         if (lang != null) {
@@ -70,6 +74,7 @@ public final class Settings {
         p.setProperty("suggestionsEnabled", Boolean.toString(suggestionsEnabled));
         p.setProperty("snapToGrid", Boolean.toString(snapToGrid));
         p.setProperty("decimalPrecision", Integer.toString(decimalPrecision));
+        p.setProperty("sliderSecondsPerStep", Double.toString(sliderSecondsPerStep));
         p.setProperty("darkMode", Boolean.toString(Theme.isDark()));
         p.setProperty("language", I18n.currentCode());
         try {
@@ -93,6 +98,21 @@ public final class Settings {
         }
         try {
             return Math.max(lo, Math.min(hi, Integer.parseInt(value.trim())));
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private static double clampDouble(String value, double fallback, double lo, double hi) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            double parsed = Double.parseDouble(value.trim());
+            if (!Double.isFinite(parsed)) {
+                return fallback;
+            }
+            return Math.max(lo, Math.min(hi, parsed));
         } catch (NumberFormatException e) {
             return fallback;
         }

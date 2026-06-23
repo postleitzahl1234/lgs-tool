@@ -4,6 +4,8 @@ target/
 # Vendored ECC / Claude developer tooling (not part of this project's source)
 ECC-main/
 .claude/
+.agents/
+.codex/
 
 # Runtime-saved LGS systems and geometry constructions
 /lgs/

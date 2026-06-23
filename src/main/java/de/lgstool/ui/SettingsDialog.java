@@ -12,6 +12,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -88,6 +89,18 @@ public final class SettingsDialog {
         precision.valueProperty().addListener((o, a, b) -> Settings.decimalPrecision = b);
         HBox precisionRow = new HBox(8, new Label(I18n.t("settings.precision")), precision);
 
+        Spinner<Double> sliderSeconds = new Spinner<>();
+        sliderSeconds.setValueFactory(new SpinnerValueFactory.DoubleSpinnerValueFactory(
+                0.01, 10.0, Settings.sliderSecondsPerStep, 0.01));
+        sliderSeconds.setEditable(true);
+        sliderSeconds.setMaxWidth(100);
+        sliderSeconds.valueProperty().addListener((o, a, b) -> {
+            if (b != null) {
+                Settings.sliderSecondsPerStep = b;
+            }
+        });
+        HBox sliderSecondsRow = new HBox(8, new Label(I18n.t("settings.sliderStepSeconds")), sliderSeconds);
+
         Label displayLabel = new Label(I18n.t("settings.defaultDisplay"));
         ToggleGroup group = new ToggleGroup();
         RadioButton frac = new RadioButton(I18n.t("settings.fractions"));
@@ -110,7 +123,7 @@ public final class SettingsDialog {
         });
 
         VBox root = new VBox(14, title, languageLabel, language, fullscreen, darkMode, suggestions, snap,
-                displayLabel, frac, dec, precisionRow, about, close);
+                displayLabel, frac, dec, precisionRow, sliderSecondsRow, about, close);
         root.setPadding(new Insets(24));
         root.setStyle("-fx-background-color: " + Theme.BACKGROUND + ";");
 

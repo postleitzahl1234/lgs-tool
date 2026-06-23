@@ -108,7 +108,7 @@ public final class GlossaryDialog {
                 new Group("gg.circle", "Circle(M, r)", "Midpoint(A, B)"),
                 new Group("gg.shapes", "Vector(A, B)", "Polygon(A, B, …)", "Angle(A, B, C)"),
                 new Group("gg.slider", "Slider(min, max [, step])"),
-                new Group("gg.matrixcreate", "create(M, width*height)", "rand(M, lo, hi)"),
+                new Group("gg.matrixcreate", "create(M, variables*rows)", "rand(M, lo, hi)"),
                 new Group("gg.matrix", "M = {{1,2},{3,4}}", "Solve(M)", "RREF(M)", "Det(M)",
                         "Inverse(M)", "Transpose(M)", "Rank(M)", "Identity(n)"),
                 new Group("gg.calc", "Derivative(f)", "Integral(f)", "Integral(f, a, b)",

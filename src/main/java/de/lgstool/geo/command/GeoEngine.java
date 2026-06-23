@@ -351,20 +351,29 @@ public final class GeoEngine {
         return GeoResult.ok(I18n.t("geo.loaded", name, construction.size()));
     }
 
-    /** {@code create(name, width*height)}: a new editable zero matrix (height rows × width cols). */
-    private GeoResult createMatrix(String name, int width, int height) {
-        if (width < 1 || height < 1) {
+    /**
+     * {@code create(name, variables*rows)}: a new editable linear system — an augmented
+     * matrix with {@code rows} equations and {@code variables + 1} columns (the extra
+     * right-hand-side scalar column). All entries start at 0; capped at 100×100.
+     */
+    private GeoResult createMatrix(String name, int variables, int rows) {
+        if (variables < 1 || rows < 1) {
             return GeoResult.error(I18n.t("geo.createSize"));
         }
-        Fraction[][] m = new Fraction[height][width];
-        for (int r = 0; r < height; r++) {
-            for (int c = 0; c < width; c++) {
+        if (variables > 100 || rows > 100) {
+            return GeoResult.error(I18n.t("geo.createMax"));
+        }
+        int cols = variables + 1;   // coefficients + the right-hand-side column
+        Fraction[][] m = new Fraction[rows][cols];
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
                 m[r][c] = Fraction.ZERO;
             }
         }
         snapshot();
         Value.MatrixV mv = new Value.MatrixV(m);
         GeoObject o = construction.defineLiteral(name, GeoFormat.matrixLiteral(mv), mv);
+        o.setLinearSystem(true);
         lastMatrix = name;
         return committed(o);
     }
@@ -397,6 +406,54 @@ public final class GeoEngine {
     /** The editable input line that recreates an object (used by the algebra view). */
     public String editableLine(GeoObject o) {
         return replayLine(o);
+    }
+
+    /**
+     * Edits a single matrix cell while preserving source expressions in the other
+     * cells. A new bare identifier (for example {@code rhs}) is created as a free
+     * number with the cell's current value, so the matrix can immediately depend on
+     * it and the user may later redefine that number as a slider.
+     */
+    public GeoResult editMatrixCell(String matrixName, int rowZeroBased, int colZeroBased, String entry) {
+        try {
+            return editMatrixCellOrThrow(matrixName, rowZeroBased, colZeroBased, entry);
+        } catch (EvalException | IllegalArgumentException | ArithmeticException e) {
+            return GeoResult.error(e.getMessage());
+        }
+    }
+
+    private GeoResult editMatrixCellOrThrow(String matrixName, int rowZeroBased, int colZeroBased, String entry) {
+        GeoObject current = construction.get(matrixName);
+        if (current == null) {
+            return GeoResult.error(I18n.t("geo.notExists", matrixName));
+        }
+        if (!(current.value() instanceof Value.MatrixV matrix)) {
+            return GeoResult.error(I18n.t("geo.notMatrix", matrixName));
+        }
+        if (rowZeroBased < 0 || rowZeroBased >= matrix.rowCount()
+                || colZeroBased < 0 || colZeroBased >= matrix.colCount()) {
+            return GeoResult.error("Matrixzelle existiert nicht.");
+        }
+        String normalized = entry == null || entry.isBlank() ? "0" : entry.trim();
+        String previousText = GeoFormat.matrixEntryText(current.source(), matrix, rowZeroBased, colZeroBased).trim();
+        if (previousText.equals(normalized)) {
+            return GeoResult.ok(current.name() + " = " + GeoFormat.value(current.value()));
+        }
+
+        String literal = GeoFormat.matrixLiteralWithSource(
+                current.source(), matrix, rowZeroBased, colZeroBased, normalized);
+        snapshot();
+        if (isNewBareVariable(normalized)) {
+            Fraction initial = matrix.rows()[rowZeroBased][colZeroBased];
+            construction.define(normalized, initial.toString(), Parser.parse(initial.toString()), null);
+        }
+        GeoObject obj = construction.define(matrixName, literal, Parser.parse(literal), null);
+        lastMatrix = matrixName;
+        return committed(obj);
+    }
+
+    private boolean isNewBareVariable(String entry) {
+        return IDENT.matcher(entry).matches() && !construction.contains(entry);
     }
 
     /**

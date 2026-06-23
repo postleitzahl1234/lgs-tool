@@ -179,16 +179,25 @@ public final class AlgebraView extends VBox {
         return grid;
     }
 
+    private static final String CELL_IDLE = "-fx-text-fill: " + Theme.TEXT
+            + "; -fx-font-family: 'Consolas', monospace; -fx-background-color: rgba(255,255,255,0.5);"
+            + " -fx-border-color: derive(" + Theme.ACCENT_SAGE + ", -10%); -fx-border-width: 1;"
+            + " -fx-border-radius: 3; -fx-background-radius: 3; -fx-padding: 1 3 1 3;";
+    private static final String CELL_FOCUS = CELL_IDLE
+            + "-fx-border-color: " + Theme.ACCENT_PETROL + "; -fx-border-width: 1.5;";
+
     private TextField matrixCell(GeoObject o, int row, int col, String text) {
         TextField field = new TextField(text);
         field.setPrefColumnCount(3);
-        field.setMinWidth(40);
-        field.setStyle("-fx-text-fill: " + Theme.TEXT + "; -fx-font-family: 'Consolas', monospace;"
-                + " -fx-background-color: transparent; -fx-padding: 1 3 1 3;");
+        field.setMinWidth(42);
+        field.setStyle(CELL_IDLE);
         Tooltip.install(field, new Tooltip(I18n.t("graph.editHint")));
         field.setOnAction(e -> commitMatrixCell(o, row, col, field.getText()));
         field.focusedProperty().addListener((obs, was, now) -> {
-            if (!now) {
+            field.setStyle(now ? CELL_FOCUS : CELL_IDLE);
+            if (now) {
+                field.selectAll();
+            } else {
                 commitMatrixCell(o, row, col, field.getText());
             }
         });
@@ -197,21 +206,15 @@ public final class AlgebraView extends VBox {
 
     /** Rebuilds the matrix literal with one entry changed and redefines the object. */
     private void commitMatrixCell(GeoObject o, int row, int col, String entry) {
-        if (!(engine.construction().get(o.name()) instanceof GeoObject current)
-                || !(current.value() instanceof Value.MatrixV m)) {
+        GeoObject current = engine.construction().get(o.name());
+        if (current == null || !(current.value() instanceof Value.MatrixV m)) {
             return;
         }
-        StringBuilder literal = new StringBuilder("{");
-        for (int i = 0; i < m.rowCount(); i++) {
-            literal.append(i == 0 ? "{" : ", {");
-            for (int j = 0; j < m.colCount(); j++) {
-                String value = (i == row && j == col) ? entry.trim() : m.rows()[i][j].toString();
-                literal.append(j == 0 ? "" : ", ").append(value.isEmpty() ? "0" : value);
-            }
-            literal.append("}");
+        // No-op if the entry is unchanged (avoids needless redefine churn while tabbing).
+        if (m.rows()[row][col].toString().equals(entry.trim())) {
+            return;
         }
-        literal.append("}");
-        engine.execute(o.name() + " = " + literal);   // structureChanged -> rebuild()
+        engine.execute(o.name() + " = " + GeoFormat.matrixLiteralWith(m, row, col, entry));
     }
 
     private void startRename(GeoObject o, Label name, HBox header) {

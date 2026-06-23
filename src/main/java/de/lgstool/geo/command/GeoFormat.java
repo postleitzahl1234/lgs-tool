@@ -39,11 +39,23 @@ public final class GeoFormat {
 
     /** A re-parseable brace literal {@code {{a, b}, {c, d}}} (used to redefine an edited matrix). */
     public static String matrixLiteral(Value.MatrixV m) {
+        return matrixLiteralWith(m, -1, -1, null);
+    }
+
+    /**
+     * The brace literal of {@code m} with the single entry at ({@code row}, {@code col})
+     * replaced by {@code entry} (a blank entry becomes 0). Pass {@code row = col = -1} for
+     * the unchanged literal. Used by the algebra view to redefine a matrix after a cell edit.
+     */
+    public static String matrixLiteralWith(Value.MatrixV m, int row, int col, String entry) {
         StringBuilder sb = new StringBuilder("{");
         for (int i = 0; i < m.rowCount(); i++) {
             sb.append(i == 0 ? "{" : ", {");
             for (int j = 0; j < m.colCount(); j++) {
-                sb.append(j == 0 ? "" : ", ").append(m.rows()[i][j]);
+                String value = (i == row && j == col)
+                        ? (entry == null || entry.isBlank() ? "0" : entry.trim())
+                        : m.rows()[i][j].toString();
+                sb.append(j == 0 ? "" : ", ").append(value);
             }
             sb.append("}");
         }

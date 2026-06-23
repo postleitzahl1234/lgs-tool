@@ -6,6 +6,7 @@ import de.lgstool.geo.expr.Expr;
 import de.lgstool.geo.expr.Value;
 import de.lgstool.geo.model.Construction;
 import de.lgstool.geo.model.GeoObject;
+import de.lgstool.geo.model.Palette;
 import java.util.List;
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
@@ -96,6 +97,7 @@ public final class Scene3DView extends Pane {
                 case Value.SphereV s -> addSphere(s, color);
                 case Value.PlaneV pl -> addPlane(pl, color);
                 case Value.FunctionV ignored -> addSurface(o, color);
+                case Value.MatrixV mtx -> addSystem(mtx, o);
                 default -> {
                     // lines/segments/circles are shown in the 2D view
                 }
@@ -137,6 +139,24 @@ public final class Scene3DView extends Pane {
         sphere.setTranslateY(-s.center().y() * scale);
         sphere.setTranslateZ(s.center().z() * scale);
         world.getChildren().add(sphere);
+    }
+
+    /** Draws a 4-column augmented matrix {@code [a b c | d]} as one plane per row (a 3-variable system). */
+    private void addSystem(Value.MatrixV m, GeoObject o) {
+        if (m.colCount() != 4) {
+            return;   // only 3-variable augmented systems map cleanly to planes
+        }
+        int rows = m.rowCount();
+        for (int i = 0; i < rows; i++) {
+            double a = m.rows()[i][0].doubleValue();
+            double b = m.rows()[i][1].doubleValue();
+            double c = m.rows()[i][2].doubleValue();
+            double d = m.rows()[i][3].doubleValue();
+            double deltaL = rows <= 1 ? 0 : (i - (rows - 1) / 2.0) * 0.10;
+            Color rowColor = o.colorHex() != null ? Color.web(Palette.shade(o.colorHex(), deltaL))
+                    : GeoPalette.color(o, i);
+            addPlane(new Value.PlaneV(a, b, c, d), rowColor);
+        }
     }
 
     private void addPlane(Value.PlaneV plane, Color color) {

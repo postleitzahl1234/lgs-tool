@@ -117,6 +117,7 @@ public final class SelfTest {
                 ws.submit("E = Plane((0,0,0), (1,0,0), (0,1,0))");
                 ws.submit("K = Sphere((0,0,0), 2)");
                 ws.submit("surf(x, y) = x^2 - y^2");
+                ws.submit("Sys3 = {{1, 0, 0, 1}, {0, 1, 0, 2}, {0, 0, 1, 3}}");   // 3-var system -> planes
                 layout(wsScene);
                 ws.showView(false);
                 layout(wsScene);

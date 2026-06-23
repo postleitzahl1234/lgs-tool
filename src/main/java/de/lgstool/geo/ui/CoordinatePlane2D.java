@@ -9,6 +9,7 @@ import de.lgstool.geo.expr.NameResolver;
 import de.lgstool.geo.expr.Value;
 import de.lgstool.geo.model.Construction;
 import de.lgstool.geo.model.GeoObject;
+import de.lgstool.geo.model.Palette;
 import de.lgstool.viz.Plane2DMath;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -208,8 +209,9 @@ public final class CoordinatePlane2D extends Pane {
                 case Value.ListV list -> drawList(g, w, h, list, color);
                 case Value.TextV t -> drawText(g, w, h, t, color);
                 case Value.ImplicitV im -> drawImplicit(g, w, h, im, color);
+                case Value.MatrixV mtx -> drawSystem(g, w, h, mtx, o);
                 default -> {
-                    // 3D objects (plane/sphere/3D point/line) and matrices are not drawn here
+                    // 3D objects (plane/sphere/3D point/line) are not drawn here
                 }
             }
         }
@@ -472,6 +474,27 @@ public final class CoordinatePlane2D extends Pane {
                     // non-plottable list items (numbers, nested lists) live in the list/log only
                 }
             }
+        }
+    }
+
+    /**
+     * Draws a matrix as the linear system it represents: a 3-column augmented matrix
+     * {@code [a b | c]} becomes one line {@code a·x + b·y = c} per row (the rows are tinted
+     * to match the matrix grid in the algebra list). Other sizes are list-only.
+     */
+    private void drawSystem(GraphicsContext g, double w, double h, Value.MatrixV m, GeoObject o) {
+        if (m.colCount() != 3) {
+            return;   // only 2-variable augmented systems map cleanly to 2D lines
+        }
+        String baseHex = o.colorHex();
+        int rows = m.rowCount();
+        for (int i = 0; i < rows; i++) {
+            double a = m.rows()[i][0].doubleValue();
+            double b = m.rows()[i][1].doubleValue();
+            double c = m.rows()[i][2].doubleValue();
+            double deltaL = rows <= 1 ? 0 : (i - (rows - 1) / 2.0) * 0.10;
+            Color rowColor = baseHex != null ? Color.web(Palette.shade(baseHex, deltaL)) : colorFor(o, i);
+            drawLine(g, w, h, new Value.LineV(a, b, c), rowColor);
         }
     }
 

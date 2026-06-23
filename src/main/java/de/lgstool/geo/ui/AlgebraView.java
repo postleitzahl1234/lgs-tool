@@ -17,6 +17,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
@@ -145,7 +146,16 @@ public final class AlgebraView extends VBox {
 
         VBox cell = new VBox(2, header);
         if (o.value() instanceof Value.MatrixV m) {
-            cell.getChildren().add(matrixGrid(o, m, colorHex));
+            // Wrap the grid so a wide augmented matrix [A|b] scrolls horizontally instead of
+            // having its right-hand (b) column clipped by the panel's fit-to-width.
+            ScrollPane gridScroll = new ScrollPane(matrixGrid(o, m, colorHex));
+            gridScroll.setFitToHeight(true);
+            gridScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+            gridScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            gridScroll.setPrefViewportHeight(m.rowCount() * 32 + 18);   // headroom for the h-scrollbar
+            gridScroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;"
+                    + " -fx-padding: 0;");
+            cell.getChildren().add(gridScroll);
         }
         if (o.isSlider() && o.value() instanceof Value.NumberV n) {
             cell.getChildren().add(sliderFor(o, n.v()));
@@ -163,7 +173,7 @@ public final class AlgebraView extends VBox {
      */
     private VBox matrixGrid(GeoObject o, Value.MatrixV m, String baseHex) {
         VBox grid = new VBox(2);
-        grid.setPadding(new Insets(3, 0, 4, 24));
+        grid.setPadding(new Insets(3, 2, 4, 6));
         int rows = m.rowCount();
         for (int i = 0; i < rows; i++) {
             double deltaL = rows <= 1 ? 0 : (i - (rows - 1) / 2.0) * 0.10;

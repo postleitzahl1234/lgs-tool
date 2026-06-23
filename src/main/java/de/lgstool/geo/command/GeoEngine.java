@@ -14,6 +14,7 @@ import de.lgstool.geo.expr.Parser;
 import de.lgstool.geo.expr.StatsBuiltins;
 import de.lgstool.geo.expr.Value;
 import de.lgstool.geo.io.GeoStorage;
+import de.lgstool.math.Fraction;
 import de.lgstool.geo.model.Construction;
 import de.lgstool.geo.model.GeoObject;
 import de.lgstool.geo.model.GeoType;
@@ -50,11 +51,16 @@ public final class GeoEngine {
             "(?i)(?:delete|del|lösche|loesche)\\s*\\(\\s*([A-Za-z][A-Za-z0-9_]*)\\s*\\)");
     private static final Pattern SAVE = Pattern.compile("(?i)(?:save|speichern)\\s*\\(\\s*(\\w+)\\s*\\)");
     private static final Pattern LOAD = Pattern.compile("(?i)(?:load|laden)\\s*\\(\\s*(\\w+)\\s*\\)");
+    private static final Pattern CREATE = Pattern.compile(
+            "(?i)(?:create|erstelle)\\s*\\(\\s*([A-Za-z][A-Za-z0-9_]*)\\s*,\\s*(\\d+)\\s*\\*\\s*(\\d+)\\s*\\)");
+    private static final Pattern RAND = Pattern.compile(
+            "(?i)(?:rand|zufall)\\s*\\(\\s*(?:([A-Za-z][A-Za-z0-9_]*)\\s*,\\s*)?(-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\)");
 
     private Construction construction = newConstruction();
     private final Deque<Construction> undoStack = new ArrayDeque<>();
     private final Deque<Construction> redoStack = new ArrayDeque<>();
     private GeoView view = GeoView.NONE;
+    private String lastMatrix;   // most recently created/defined matrix, the default target for rand(lo, hi)
 
     private static Construction newConstruction() {
         BuiltinFunctions builtins = new CompositeBuiltins(new GeoBuiltins(),
@@ -120,6 +126,16 @@ public final class GeoEngine {
         if (load.matches()) {
             return load(load.group(1));
         }
+        Matcher create = CREATE.matcher(s);
+        if (create.matches()) {
+            return createMatrix(create.group(1),
+                    Integer.parseInt(create.group(2)), Integer.parseInt(create.group(3)));
+        }
+        Matcher rand = RAND.matcher(s);
+        if (rand.matches()) {
+            return randomFill(rand.group(1),
+                    Integer.parseInt(rand.group(2)), Integer.parseInt(rand.group(3)));
+        }
         int eq = topLevelEquals(s);
         if (eq >= 0) {
             return defineWithLabel(s.substring(0, eq).trim(), s.substring(eq + 1).trim());
@@ -153,6 +169,9 @@ public final class GeoEngine {
             }
             snapshot();
             GeoObject obj = construction.define(left, right, ast, null);
+            if (obj.value() instanceof Value.MatrixV) {
+                lastMatrix = obj.name();
+            }
             return committed(obj);
         }
         // Otherwise treat "LHS = RHS" as an implicit equation in x and y.
@@ -330,6 +349,49 @@ public final class GeoEngine {
         construction = temp.construction;
         view.structureChanged();
         return GeoResult.ok(I18n.t("geo.loaded", name, construction.size()));
+    }
+
+    /** {@code create(name, width*height)}: a new editable zero matrix (height rows × width cols). */
+    private GeoResult createMatrix(String name, int width, int height) {
+        if (width < 1 || height < 1) {
+            return GeoResult.error(I18n.t("geo.createSize"));
+        }
+        Fraction[][] m = new Fraction[height][width];
+        for (int r = 0; r < height; r++) {
+            for (int c = 0; c < width; c++) {
+                m[r][c] = Fraction.ZERO;
+            }
+        }
+        snapshot();
+        Value.MatrixV mv = new Value.MatrixV(m);
+        GeoObject o = construction.defineLiteral(name, GeoFormat.matrixLiteral(mv), mv);
+        lastMatrix = name;
+        return committed(o);
+    }
+
+    /** {@code rand([name,] lo, hi)}: fills a matrix with random integers in [lo, hi]. */
+    private GeoResult randomFill(String name, int lo, int hi) {
+        String target = name != null ? name : lastMatrix;
+        if (target == null) {
+            return GeoResult.error(I18n.t("geo.noMatrix"));
+        }
+        GeoObject existing = construction.get(target);
+        if (existing == null || !(existing.value() instanceof Value.MatrixV cur)) {
+            return GeoResult.error(I18n.t("geo.notMatrix", target));
+        }
+        int low = Math.min(lo, hi);
+        int span = Math.abs(hi - lo) + 1;
+        Fraction[][] m = new Fraction[cur.rowCount()][cur.colCount()];
+        for (int r = 0; r < cur.rowCount(); r++) {
+            for (int c = 0; c < cur.colCount(); c++) {
+                m[r][c] = Fraction.of(low + (long) (Math.random() * span));
+            }
+        }
+        snapshot();
+        Value.MatrixV mv = new Value.MatrixV(m);
+        GeoObject o = construction.defineLiteral(target, GeoFormat.matrixLiteral(mv), mv);
+        lastMatrix = target;
+        return committed(o);
     }
 
     /** The editable input line that recreates an object (used by the algebra view). */

@@ -106,6 +106,9 @@ public final class I18n {
         m.put("sheet.hint", "Zelle = Objekt (A1, B2 …). Formeln dürfen andere Zellen nutzen, z. B. =A1*2.");
         m.put("geo.undefined", "undefiniert");
         m.put("geo.notEquationXY", "Gleichung muss x oder y enthalten (z. B. x^2 + y^2 = 1).");
+        m.put("geo.createSize", "create erwartet positive Maße, z. B. create(M, 3*2).");
+        m.put("geo.noMatrix", "Keine Matrix vorhanden — zuerst create(name, Breite*Höhe).");
+        m.put("geo.notMatrix", "''{0}'' ist keine Matrix.");
         m.put("geo.exists", "Objekt ''{0}'' existiert bereits.");
         m.put("geo.renamed", "''{0}'' umbenannt in ''{1}''.");
         m.put("main.sheets", "Zeichenblätter");
@@ -179,7 +182,7 @@ public final class I18n {
         m.put("hk.keyDrag", "Maus ziehen");
         m.put("hk.keyClick", "Klick");
         m.put("hk.enter", "Befehl ausführen");
-        m.put("hk.f11", "Vollbild umschalten");
+        m.put("hk.f11", "Vollbild umschalten (startet im Vollbild über der Taskleiste)");
         m.put("hk.esc", "Vollbild verlassen");
         m.put("hk.wheel", "Koordinatensystem zoomen");
         m.put("hk.drag", "Ansicht / Matrix verschieben");
@@ -392,6 +395,7 @@ public final class I18n {
         m.put("gg.locus", "Ortslinie: Bahn von Punkt P, während Parameter s läuft.");
         m.put("gg.space", "3D: Ebene durch 3 Punkte; Kugel um M mit Radius r.");
         m.put("gg.matrix", "Matrizen (exakte Brüche): Lösen, RREF, Determinante, Inverse, Transponierte.");
+        m.put("gg.matrixcreate", "Leere, bearbeitbare Matrix erstellen (Breite*Höhe); rand füllt sie mit Zufallszahlen.");
         m.put("gg.list", "Listen & Folgen: Summe, Mittelwert, Element, Sortieren.");
         m.put("gg.implicit", "Implizite Gleichung in x und y; zeichnet die Nullstellenkurve (z. B. Kreis).");
         m.put("gg.stats", "Statistik & Regression: Median, Quartile, Varianz, SD, Modus, FitLine, FitPoly.");
@@ -458,6 +462,9 @@ public final class I18n {
         m.put("sheet.hint", "Each cell is an object (A1, B2 …). Formulas may reference other cells, e.g. =A1*2.");
         m.put("geo.undefined", "undefined");
         m.put("geo.notEquationXY", "Equation must contain x or y (e.g. x^2 + y^2 = 1).");
+        m.put("geo.createSize", "create expects positive sizes, e.g. create(M, 3*2).");
+        m.put("geo.noMatrix", "No matrix yet — first create(name, width*height).");
+        m.put("geo.notMatrix", "''{0}'' is not a matrix.");
         m.put("workspace.renameHint", "Double-click to rename");
         m.put("geo.exists", "Object ''{0}'' already exists.");
         m.put("geo.renamed", "Renamed ''{0}'' to ''{1}''.");
@@ -532,7 +539,7 @@ public final class I18n {
         m.put("hk.keyDrag", "Mouse drag");
         m.put("hk.keyClick", "Click");
         m.put("hk.enter", "Run command");
-        m.put("hk.f11", "Toggle fullscreen");
+        m.put("hk.f11", "Toggle fullscreen (starts in fullscreen, above the taskbar)");
         m.put("hk.esc", "Exit fullscreen");
         m.put("hk.wheel", "Zoom the coordinate system");
         m.put("hk.drag", "Pan the view / matrix");
@@ -745,6 +752,7 @@ public final class I18n {
         m.put("gg.locus", "Locus: the path of point P as parameter s varies.");
         m.put("gg.space", "3D: plane through 3 points; sphere around M with radius r.");
         m.put("gg.matrix", "Matrices (exact fractions): Solve, RREF, Det, Inverse, Transpose.");
+        m.put("gg.matrixcreate", "Create an empty, editable matrix (width*height); rand fills it with random numbers.");
         m.put("gg.implicit", "Implicit equation in x and y; plots the zero-set curve (e.g. a circle).");
         m.put("gg.stats", "Statistics & regression: Median, quartiles, Variance, SD, Mode, FitLine, FitPoly.");
         m.put("gg.higher", "Higher-order lists: Map, KeepIf, CountIf, Zip, Take, Union, Intersection.");

@@ -116,6 +116,8 @@ public final class Suggestions {
                 Suggestion.of("Plane", "Plane(A, B, C)"),
                 Suggestion.of("Sphere", "Sphere(M, r)"),
                 Suggestion.of("Matrix", "{{1, 2}, {3, 4}}"),
+                Suggestion.of("create", "create(M, width*height)"),
+                Suggestion.of("rand", "rand([M,] lo, hi)"),
                 Suggestion.of("Solve", "Solve({{1,1,3},{1,-1,1}})"),
                 Suggestion.of("RREF", "RREF(M)"),
                 Suggestion.of("Det", "Det(M)"),

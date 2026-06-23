@@ -37,6 +37,19 @@ public final class GeoFormat {
         };
     }
 
+    /** A re-parseable brace literal {@code {{a, b}, {c, d}}} (used to redefine an edited matrix). */
+    public static String matrixLiteral(Value.MatrixV m) {
+        StringBuilder sb = new StringBuilder("{");
+        for (int i = 0; i < m.rowCount(); i++) {
+            sb.append(i == 0 ? "{" : ", {");
+            for (int j = 0; j < m.colCount(); j++) {
+                sb.append(j == 0 ? "" : ", ").append(m.rows()[i][j]);
+            }
+            sb.append("}");
+        }
+        return sb.append("}").toString();
+    }
+
     private static String complex(Value.ComplexV z) {
         if (Math.abs(z.im()) < 1e-12) {
             return num(z.re());

@@ -64,6 +64,8 @@ public final class SelfTest {
                 ws.submit("sol = Solve(Aug)");
                 ws.submit("frac = {{1, 1/2}, {1/3, 1/4}}");
                 ws.submit("Mx = {{1, 2, 3}, {4, 5, 6}}");   // non-square redefine: d=Det(Mx) -> undefined, must not poison
+                ws.submit("create(Grid, 3*2)");             // editable zero matrix
+                ws.submit("rand(1, 9)");                    // fill the last matrix with randoms
                 layout(wsScene);
 
                 // implicit equations (zero-contour curves).

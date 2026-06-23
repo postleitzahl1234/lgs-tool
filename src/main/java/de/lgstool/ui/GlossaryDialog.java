@@ -2,6 +2,10 @@ package de.lgstool.ui;
 
 import de.lgstool.config.I18n;
 import de.lgstool.config.Theme;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -92,41 +96,60 @@ public final class GlossaryDialog {
         };
     }
 
+    /** One command (or syntax form) per row, expanded from feature groups and sorted A→Z. */
     private static Row[] rows() {
-        // Only the active unified-workspace (GEO) commands, sorted alphabetically by syntax.
-        Row[] rows = {
-                new Row("A=(1,2); B=(1,2,3)", "gg.point", "GEO"),
-                new Row("Circle(M,r); Midpoint(A,B)", "gg.circle", "GEO"),
-                new Row("Delete(obj); clear; undo; redo; list", "gg.meta", "GEO"),
-                new Row("Derivative(f); Integral(f,a,b); Tangent(x0,f)", "gg.calc", "GEO"),
-                new Row("Distance/Angle(point/line/plane …)", "gg.relate", "GEO"),
-                new Row("Ellipse(F1,F2,a); Hyperbola(…); Parabola(F,line)", "gg.conic", "GEO"),
-                new Row("Center; Eccentricity; Circle(A,B,C); Centroid; ClosestPoint; Curvature; Roots", "gg.conican", "GEO"),
-                new Row("f(x)=…; g(x,y)=…", "gg.func", "GEO"),
-                new Row("Length; Area; Perimeter; Slope", "gg.measure", "GEO"),
-                new Row("Line(A,B); Segment(A,B)", "gg.line", "GEO"),
-                new Row("Locus(P, s)", "gg.locus", "GEO"),
-                new Row("M = {{1,2},{3,4}}; Solve; RREF; Det; Inverse; Transpose", "gg.matrix", "GEO"),
-                new Row("Median; Q1; Q3; Variance; SD; Mode; FitLine; FitPoly", "gg.stats", "GEO"),
-                new Row("PerpendicularLine; ParallelLine; …Bisector; PointOn", "gg.construct", "GEO"),
-                new Row("Plane(A,B,C); Sphere(M,r)", "gg.space", "GEO"),
-                new Row("Reflect; Rotate; Translate; Dilate(obj, …)", "gg.transform", "GEO"),
-                new Row("Root(f); Extremum(f); InflectionPoint(f); Normal(x0,f)", "gg.analysis", "GEO"),
-                new Row("Solve; Limit; TaylorPolynomial; Substitute; Expand; Factor; Simplify", "gg.cas", "GEO"),
-                new Row("Slider(min, max [, step])", "gg.slider", "GEO"),
-                new Row("Vector(A,B); Polygon(A,…); Angle(A,B,C)", "gg.shapes", "GEO"),
-                new Row("save(name); load(name)", "gg.io", "GEO"),
-                new Row("x^2 + y^2 = 1; 1 = x^2+y^2; f(x^2,y^2)=1", "gg.implicit", "GEO"),
-                new Row("{1,2,3}; Sequence; Sum; Mean; Element; Sort", "gg.list", "GEO"),
-                new Row("Map; KeepIf; CountIf; Zip; Take; Union; Intersection", "gg.higher", "GEO"),
-                new Row("a < b; a == b; a & b; If(cond, then, else)", "gg.logic", "GEO"),
-                new Row("3 + 4i; Real; Imaginary; Conjugate; Modulus; Arg", "gg.complex", "GEO"),
-                new Row("b = true; (checkbox); Slider + ▶ (animate)", "gg.interact", "GEO"),
-                new Row("\"text\"; Text(\"…\", P)", "gg.text", "GEO"),
-                new Row("Intersect(a,b); Distance(A,B)", "gg.intersect", "GEO")
+        record Group(String key, String... commands) {
+        }
+        Group[] groups = {
+                new Group("gg.point", "A = (x, y)", "A = (x, y, z)"),
+                new Group("gg.func", "f(x) = …", "g(x, y) = …"),
+                new Group("gg.implicit", "x^2 + y^2 = 1"),
+                new Group("gg.line", "Line(A, B)", "Segment(A, B)"),
+                new Group("gg.circle", "Circle(M, r)", "Midpoint(A, B)"),
+                new Group("gg.shapes", "Vector(A, B)", "Polygon(A, B, …)", "Angle(A, B, C)"),
+                new Group("gg.slider", "Slider(min, max [, step])"),
+                new Group("gg.matrixcreate", "create(M, width*height)", "rand(M, lo, hi)"),
+                new Group("gg.matrix", "M = {{1,2},{3,4}}", "Solve(M)", "RREF(M)", "Det(M)",
+                        "Inverse(M)", "Transpose(M)", "Rank(M)", "Identity(n)"),
+                new Group("gg.calc", "Derivative(f)", "Integral(f)", "Integral(f, a, b)",
+                        "Integral(f, g, a, b)", "Tangent(x0, f)"),
+                new Group("gg.analysis", "Root(f)", "Extremum(f)", "InflectionPoint(f)", "Normal(x0, f)"),
+                new Group("gg.cas", "Solve(x^2 - 4 = 0)", "Limit(f, x0)", "TaylorPolynomial(f, x0, n)",
+                        "Substitute(expr, x, v)", "Expand(expr)", "Factor(expr)", "Simplify(expr)"),
+                new Group("gg.measure", "Length(seg)", "Area(poly)", "Perimeter(poly)", "Slope(line)"),
+                new Group("gg.relate", "Distance(A, B)", "Angle(g, h)"),
+                new Group("gg.intersect", "Intersect(a, b [, n])"),
+                new Group("gg.transform", "Reflect(obj, line)", "Rotate(obj, angle)",
+                        "Translate(obj, vec)", "Dilate(obj, k)"),
+                new Group("gg.construct", "PerpendicularLine(P, g)", "ParallelLine(P, g)",
+                        "PerpendicularBisector(A, B)", "AngleBisector(A, B, C)", "PointOn(path, t)"),
+                new Group("gg.conic", "Ellipse(F1, F2, a)", "Hyperbola(F1, F2, a)", "Parabola(F, line)"),
+                new Group("gg.conican", "Center(conic)", "Eccentricity(conic)", "Circle(A, B, C)",
+                        "Centroid(poly)", "ClosestPoint(P, obj)", "Curvature(x0, f)", "Roots(f)"),
+                new Group("gg.locus", "Locus(P, s)"),
+                new Group("gg.space", "Plane(A, B, C)", "Sphere(M, r)"),
+                new Group("gg.list", "{1, 2, 3}", "Sequence(a, b [, step])", "Sum(list)",
+                        "Mean(list)", "Element(list, i)", "Sort(list)"),
+                new Group("gg.higher", "Sequence(k^2, k, a, b)", "Map(expr, k, list)", "KeepIf(cond, k, list)",
+                        "CountIf(cond, k, list)", "Zip(expr, k, l1, m, l2)", "Take(list, m, n)",
+                        "Union(l1, l2)", "Intersection(l1, l2)"),
+                new Group("gg.stats", "Median(list)", "Q1(list)", "Q3(list)", "Variance(list)",
+                        "SD(list)", "Mode(list)", "FitLine(points)", "FitPoly(points, n)"),
+                new Group("gg.logic", "a < b", "a == b", "a & b", "If(cond, then, else)"),
+                new Group("gg.complex", "3 + 4i", "Real(z)", "Imaginary(z)", "Conjugate(z)",
+                        "Modulus(z)", "Arg(z)"),
+                new Group("gg.text", "\"text\"", "Text(\"…\", P)"),
+                new Group("gg.interact", "b = true"),
+                new Group("gg.meta", "Delete(obj)", "clear", "undo", "redo", "list"),
+                new Group("gg.io", "save(name)", "load(name)")
         };
-        java.util.Arrays.sort(rows,
-                java.util.Comparator.comparing(r -> r.command().toLowerCase(java.util.Locale.ROOT)));
-        return rows;
+        List<Row> rows = new ArrayList<>();
+        for (Group g : groups) {
+            for (String command : g.commands()) {
+                rows.add(new Row(command, g.key(), "GEO"));
+            }
+        }
+        rows.sort(Comparator.comparing(r -> r.command().toLowerCase(Locale.ROOT)));
+        return rows.toArray(new Row[0]);
     }
 }

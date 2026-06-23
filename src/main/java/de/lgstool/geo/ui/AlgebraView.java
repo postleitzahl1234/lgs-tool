@@ -86,7 +86,17 @@ public final class AlgebraView extends VBox {
 
     /** The value text for an object, or a localized "undefined" marker when it failed to evaluate. */
     private static String display(GeoObject o) {
-        return o.isDefined() ? GeoFormat.value(o.value()) : I18n.t("geo.undefined");
+        if (!o.isDefined()) {
+            return I18n.t("geo.undefined");
+        }
+        // Functions show their formula (the body) rather than the opaque word "Funktion",
+        // so it is visible and obvious that double-clicking edits it.
+        if (o.value() instanceof Value.FunctionV) {
+            String src = o.source();
+            int eq = src.indexOf('=');
+            return eq >= 0 ? src.substring(eq + 1).trim() : src;
+        }
+        return GeoFormat.value(o.value());
     }
 
     private VBox row(GeoObject o) {
@@ -135,7 +145,7 @@ public final class AlgebraView extends VBox {
 
         VBox cell = new VBox(2, header);
         if (o.value() instanceof Value.MatrixV m) {
-            cell.getChildren().add(matrixGrid(m, colorHex));
+            cell.getChildren().add(matrixGrid(o, m, colorHex));
         }
         if (o.isSlider() && o.value() instanceof Value.NumberV n) {
             cell.getChildren().add(sliderFor(o, n.v()));
@@ -146,26 +156,62 @@ public final class AlgebraView extends VBox {
         return cell;
     }
 
-    /** An inline matrix grid; each row gets its own tint (a shade of the element colour). */
-    private VBox matrixGrid(Value.MatrixV m, String baseHex) {
+    /**
+     * An inline matrix grid; each row gets its own tint. Cells are editable: typing a new
+     * entry and committing (Enter or focus loss) redefines the whole matrix object, so the
+     * change participates in the dependency graph like any other edit.
+     */
+    private VBox matrixGrid(GeoObject o, Value.MatrixV m, String baseHex) {
         VBox grid = new VBox(2);
         grid.setPadding(new Insets(3, 0, 4, 24));
         int rows = m.rowCount();
         for (int i = 0; i < rows; i++) {
             double deltaL = rows <= 1 ? 0 : (i - (rows - 1) / 2.0) * 0.10;
             Color tint = Color.web(Palette.shade(baseHex, deltaL), 0.22);
-            HBox rowBox = new HBox(8);
+            HBox rowBox = new HBox(6);
             rowBox.setPadding(new Insets(2, 8, 2, 8));
             rowBox.setBackground(new Background(new BackgroundFill(tint, new CornerRadii(4), Insets.EMPTY)));
             for (int j = 0; j < m.colCount(); j++) {
-                Label cell = new Label(m.rows()[i][j].toString());
-                cell.setMinWidth(28);
-                cell.setStyle("-fx-text-fill: " + Theme.TEXT + "; -fx-font-family: 'Consolas', monospace;");
-                rowBox.getChildren().add(cell);
+                rowBox.getChildren().add(matrixCell(o, i, j, m.rows()[i][j].toString()));
             }
             grid.getChildren().add(rowBox);
         }
         return grid;
+    }
+
+    private TextField matrixCell(GeoObject o, int row, int col, String text) {
+        TextField field = new TextField(text);
+        field.setPrefColumnCount(3);
+        field.setMinWidth(40);
+        field.setStyle("-fx-text-fill: " + Theme.TEXT + "; -fx-font-family: 'Consolas', monospace;"
+                + " -fx-background-color: transparent; -fx-padding: 1 3 1 3;");
+        Tooltip.install(field, new Tooltip(I18n.t("graph.editHint")));
+        field.setOnAction(e -> commitMatrixCell(o, row, col, field.getText()));
+        field.focusedProperty().addListener((obs, was, now) -> {
+            if (!now) {
+                commitMatrixCell(o, row, col, field.getText());
+            }
+        });
+        return field;
+    }
+
+    /** Rebuilds the matrix literal with one entry changed and redefines the object. */
+    private void commitMatrixCell(GeoObject o, int row, int col, String entry) {
+        if (!(engine.construction().get(o.name()) instanceof GeoObject current)
+                || !(current.value() instanceof Value.MatrixV m)) {
+            return;
+        }
+        StringBuilder literal = new StringBuilder("{");
+        for (int i = 0; i < m.rowCount(); i++) {
+            literal.append(i == 0 ? "{" : ", {");
+            for (int j = 0; j < m.colCount(); j++) {
+                String value = (i == row && j == col) ? entry.trim() : m.rows()[i][j].toString();
+                literal.append(j == 0 ? "" : ", ").append(value.isEmpty() ? "0" : value);
+            }
+            literal.append("}");
+        }
+        literal.append("}");
+        engine.execute(o.name() + " = " + literal);   // structureChanged -> rebuild()
     }
 
     private void startRename(GeoObject o, Label name, HBox header) {

@@ -41,12 +41,17 @@ import javax.imageio.ImageIO;
  */
 public final class Workspace implements GeoView {
 
+    /** Bottom margin (≈ toggle-strip height) so the floating terminal sits just above the strip. */
+    private static final double TERMINAL_OFFSET = 34;
+
     private final GeoEngine engine;
     private final CoordinatePlane2D plane;
     private final Scene3DView scene3d;
     private final AlgebraView algebra;
     private final ActionLog log = new ActionLog();
     private final BorderPane root = new BorderPane();
+    private final StackPane appRoot = new StackPane();   // base content + the floating terminal layer
+    private final CommandBar commandBar = new CommandBar("▶", this::run, Suggestions.geo());
 
     private boolean threeD;
 
@@ -69,11 +74,19 @@ public final class Workspace implements GeoView {
         root.setLeft(leftPanel());
         root.setCenter(viewStack);
         root.setRight(log);
-        root.setBottom(bottomPanel());
+        root.setBottom(terminalToggleStrip());
+
+        // The terminal floats as a layer above the content, so toggling it never reflows
+        // the toolbar/panels/coordinate system (the toggle strip below it is always present).
+        commandBar.setVisible(false);
+        commandBar.setMaxHeight(Region.USE_PREF_SIZE);
+        StackPane.setAlignment(commandBar, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(commandBar, new Insets(0, 0, TERMINAL_OFFSET, 0));
+        appRoot.getChildren().addAll(root, commandBar);
     }
 
     public Parent getRoot() {
-        return root;
+        return appRoot;
     }
 
     public GeoEngine engine() {
@@ -166,33 +179,28 @@ public final class Workspace implements GeoView {
     }
 
     /**
-     * The bottom strip: a small arrow toggle that reveals/hides the command terminal.
-     * The terminal stays hidden by default and only appears when the arrow is clicked.
+     * The always-present bottom strip with an arrow that reveals/hides the floating
+     * terminal. The strip's height never changes, so toggling the terminal does not shift
+     * any other element — the terminal itself is a separate layer in {@link #appRoot}.
      */
-    private VBox bottomPanel() {
-        CommandBar bar = new CommandBar("▶", this::run, Suggestions.geo());
-        bar.setVisible(false);
-        bar.setManaged(false);
-
+    private HBox terminalToggleStrip() {
         Button toggle = new Button("▸ " + I18n.t("workspace.terminal"));
         toggle.setStyle("-fx-background-color: transparent; -fx-text-fill: " + Theme.ACCENT_PETROL
                 + "; -fx-font-weight: bold;");
         toggle.setOnAction(e -> {
-            boolean show = !bar.isVisible();
-            bar.setVisible(show);
-            bar.setManaged(show);
+            boolean show = !commandBar.isVisible();
+            commandBar.setVisible(show);
             toggle.setText((show ? "▾ " : "▸ ") + I18n.t("workspace.terminal"));
             if (show) {
-                bar.focusInput();
+                commandBar.focusInput();
             }
         });
 
-        HBox toggleBar = new HBox(toggle);
-        toggleBar.setAlignment(Pos.CENTER_LEFT);
-        toggleBar.setPadding(new Insets(2, 8, 2, 8));
-        toggleBar.setStyle("-fx-background-color: derive(" + Theme.ACCENT_SAGE + ", 60%);");
-
-        return new VBox(bar, toggleBar);
+        HBox strip = new HBox(toggle);
+        strip.setAlignment(Pos.CENTER_LEFT);
+        strip.setPadding(new Insets(2, 8, 2, 8));
+        strip.setStyle("-fx-background-color: derive(" + Theme.ACCENT_SAGE + ", 60%);");
+        return strip;
     }
 
     private HBox viewToggle() {

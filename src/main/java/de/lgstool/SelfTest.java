@@ -1,6 +1,6 @@
 package de.lgstool;
 
-import de.lgstool.geo.ui.GraphWorkspace;
+import de.lgstool.geo.ui.Workspace;
 import de.lgstool.ui.AppController;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,9 +12,10 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 /**
- * Headless-ish smoke test ({@code App --selftest}): boots the JavaFX toolkit,
- * builds the full UI and exercises 1D/2D/3D rendering, window handling, solving,
- * editing, undo and animation. Prints {@code SELFTEST OK} and exits 0 on success.
+ * Headless-ish smoke test ({@code App --selftest}): boots the JavaFX toolkit, builds the
+ * unified workspace and exercises geometry, functions, matrices, lists, text, LaTeX,
+ * rename, the LGS command compatibility layer and the 2D/3D views. Prints
+ * {@code SELFTEST OK} and exits 0 on success.
  */
 public final class SelfTest {
 
@@ -33,139 +34,98 @@ public final class SelfTest {
         Platform.runLater(() -> {
             try {
                 Stage stage = new Stage();
-                AppController c = new AppController(stage);
-                Scene scene = new Scene(c.root(), 1280, 800);
+                AppController controller = new AppController(stage);
+                Scene scene = new Scene(controller.root(), 1280, 800);
                 stage.setScene(scene);
 
-                // 2 variables: lines + intersection.
-                c.runMain("create(a, 2*2);");
-                c.open("a");
-                c.runLgs("a", "add(1 1 = 3);");
-                c.runLgs("a", "add(1 -1 = 1);");
-                c.runLgs("a", "solve();");
-                c.runLgs("a", "det();");
-                c.runLgs("a", "rank();");
-                c.runLgs("a", "cond();");
-                c.runLgs("a", "inverse();");
-                c.runLgs("a", "verify();");
-                c.runLgs("a", "highlight(1, #1F5E63);");
-                c.runLgs("a", "fit();");
-                c.editCell("a", 1, 0, "2");
-                layout(scene);
-                c.runLgs("a", "animate(1, 0, 6, 1);");
-                layout(scene);
-                c.runLgs("a", "axis(x, -10, 10);");
-                c.runLgs("a", "axis(y, -7, 7);");
-                c.runLgs("a", "axis();");
-                c.runLgs("a", "rand(-5, 5);");
-                layout(scene);
-
-                // new analysis + I/O commands.
-                c.runLgs("a", "rref();");
-                c.runLgs("a", "ref();");
-                c.runLgs("a", "transpose();");
-                c.runLgs("a", "trace();");
-                c.runLgs("a", "nullspace();");
-                c.runLgs("a", "cramer();");
-                c.runLgs("a", "latex();");
-                c.runLgs("a", "csv(selftest_csv);");
-                c.runLgs("a", "saveplot(selftest_plot);");
-                c.runLgs("a", "savelog(selftest_log);");
-                c.runLgs("a", "copylog();");
-                c.runLgs("a", "labels();");
-                c.runLgs("a", "labels();");
-                layout(scene);
-
-                // 1 variable: number line.
-                c.runMain("create(b, 1*1);");
-                c.open("b");
-                c.runLgs("b", "add(2 = 4);");
-                c.runLgs("b", "solve();");
-                layout(scene);
-
-                // 3 variables: planes in 3D.
-                c.runMain("create(d, 3*3);");
-                c.open("d");
-                c.runLgs("d", "add(1 0 0 = 1);");
-                c.runLgs("d", "add(0 1 0 = 2);");
-                c.runLgs("d", "add(0 0 1 = 3);");
-                c.runLgs("d", "solve();");
-                layout(scene);
-
-                // structural commands.
-                c.runLgs("d", "rename(dd);");
-                c.runMain("undo();");
-                c.runMain("redo();");
-                c.runMain("list();");
-                c.runMain("examples();");
-                c.runMain("examples(unique2);");
-                c.runLgs("a", "close();");
-                layout(scene);
-
-                // large system (glass-pane virtualization, up to 100x100).
-                c.runMain("create(big, 100*100);");
-                c.open("big");
-                c.editCell("big", 1, 0, "5");
-                c.editCell("big", 100, 100, "7");
-                layout(scene);
-                c.runLgs("big", "close();");
-                layout(scene);
-
-                // Graphing workspace: dynamic 2D + 3D geometry via the input bar.
-                GraphWorkspace graph = new GraphWorkspace(() -> {
+                Workspace ws = new Workspace(() -> {
+                }, () -> {
                 });
-                Scene gScene = new Scene(graph.getRoot(), 1280, 800);
-                layout(gScene);
-                graph.submit("A = (1, 2)");
-                graph.submit("s = Slider(0, 5)");
-                graph.submit("c = Circle(A, s)");
-                graph.submit("B = (4, 3)");
-                graph.submit("M = Midpoint(A, B)");
-                graph.submit("g = Line(A, B)");
-                graph.submit("h = Line((0, 0), (0, 5))");
-                graph.submit("S = Intersect(g, h)");
-                graph.submit("f(x) = sin(x)");
-                layout(gScene);
-                graph.showView(true);   // 3D
-                graph.submit("P = (1, 1, 1)");
-                graph.submit("E = Plane((0,0,0), (1,0,0), (0,1,0))");
-                graph.submit("K = Sphere((0,0,0), 2)");
-                graph.submit("surf(x, y) = x^2 - y^2");
-                layout(gScene);
-                graph.submit("Delete(A)");   // cascade delete c, M, g, S
-                graph.submit("undo");
-                graph.showView(false);   // back to 2D
-                layout(gScene);
+                Scene wsScene = new Scene(ws.getRoot(), 1280, 800);
 
-                // calculus, polygons, conics, locus, save/load.
-                graph.submit("fx(x) = x^2");
-                graph.submit("dfx = Derivative(fx)");
-                graph.submit("ar = Integral(fx, 0, 1)");
-                graph.submit("tg = Tangent(1, fx)");
-                graph.submit("poly = Polygon((0,0), (3,0), (0,3))");
-                graph.submit("wkl = Angle((1,0), (0,0), (0,1))");
-                graph.submit("el = Ellipse((-3,0), (3,0), 5)");
-                graph.submit("sl = Slider(0, 6.283)");
-                graph.submit("Qp = (cos(sl), sin(sl))");
-                graph.submit("loc = Locus(Qp, sl)");
-                graph.submit("save(selftest_geo)");
-                graph.submit("load(selftest_geo)");
-                layout(gScene);
+                // geometry + functions + slider.
+                ws.submit("A = (1, 2)");
+                ws.submit("s = Slider(0, 5)");
+                ws.submit("c = Circle(A, s)");
+                ws.submit("B = (4, 3)");
+                ws.submit("M = Midpoint(A, B)");
+                ws.submit("g = Line(A, B)");
+                ws.submit("f(x) = sin(x)");
+                ws.submit("df = Derivative(f)");
+                layout(wsScene);
 
-                // multiple named graph sheets via the shell.
-                c.newGraphSheet();
-                layout(scene);
+                // matrices (exact) + operations + LGS compatibility commands.
+                ws.submit("Mx = {{1, 2}, {3, 4}}");
+                ws.submit("d = Det(Mx)");
+                ws.submit("Inv = Inverse(Mx)");
+                ws.submit("Rr = RREF(Mx)");
+                ws.submit("Tn = Transpose(Mx)");
+                ws.submit("Aug = {{1, 1, 3}, {1, -1, 1}}");
+                ws.submit("sol = Solve(Aug)");
+                ws.submit("frac = {{1, 1/2}, {1/3, 1/4}}");
+                ws.submit("Mx = {{1, 2, 3}, {4, 5, 6}}");   // non-square redefine: d=Det(Mx) -> undefined, must not poison
+                layout(wsScene);
 
-                // language switch (rebuilds the UI).
-                c.changeLanguage("en");
-                layout(scene);
-                c.changeLanguage("de");
-                layout(scene);
+                // implicit equations (zero-contour curves).
+                ws.submit("x^2 + y^2 = 4");
+                ws.submit("1 = x^2 + y^2");
+                ws.submit("y = x^2");
+                layout(wsScene);
 
-                // theme switch (rebuilds the UI).
-                c.changeTheme(true);
+                // lists, sequences, text, statistics + regression.
+                ws.submit("L = {1, 2, 3, 4}");
+                ws.submit("sm = Sum(L)");
+                ws.submit("seq = Sequence(1, 5)");
+                ws.submit("md = Median(L)");
+                ws.submit("vr = Variance(L)");
+                ws.submit("data = {(0,1), (1,3), (2,5)}");
+                ws.submit("fit = FitLine(data)");
+                ws.submit("poly = FitPoly(data, 2)");
+                ws.submit("pts = {(0,0), (1,1), (2,4)}");
+                ws.submit("t1 = \"Hallo\"");
+                ws.submit("t2 = Text(\"Punkt A\", A)");
+                layout(wsScene);
+
+                // booleans + higher-order lists + CAS-lite + complex + spreadsheet cells.
+                ws.submit("flag = true");                   // boolean object -> checkbox
+                ws.submit("cmp = 3 > 2");
+                ws.submit("pick = If(flag, 10, 20)");
+                ws.submit("sq = Sequence(k^2, k, 1, 5)");
+                ws.submit("ev = KeepIf(n - 2*floor(n/2) == 0, n, sq)");
+                ws.submit("sol = Solve(x^2 - 4 = 0)");
+                ws.submit("lim = Limit(f, 0)");
+                ws.submit("anti = Integral(f)");
+                ws.submit("ex = Expand((x + 1)^2)");
+                ws.submit("zc = 3 + 4i");                   // complex number
+                ws.submit("mod = Modulus(zc)");
+                ws.submit("A1 = 5");                        // spreadsheet cells
+                ws.submit("B1 = A1 * 2");
+                layout(wsScene);
+
+                // rename + redefine + multi-command + undo.
+                ws.submit("A = (2, 1)");          // redefine
+                ws.engine().rename("B", "Bee");
+                ws.submit("undo");
+                ws.submit("clear");
+                layout(wsScene);
+
+                // 3D view.
+                ws.showView(true);
+                ws.submit("P = (1, 1, 1)");
+                ws.submit("E = Plane((0,0,0), (1,0,0), (0,1,0))");
+                ws.submit("K = Sphere((0,0,0), 2)");
+                ws.submit("surf(x, y) = x^2 - y^2");
+                layout(wsScene);
+                ws.showView(false);
+                layout(wsScene);
+
+                // language + theme rebuild (around the shared engine).
+                controller.changeLanguage("en");
                 layout(scene);
-                c.changeTheme(false);
+                controller.changeLanguage("de");
+                controller.changeTheme(true);
+                layout(scene);
+                controller.changeTheme(false);
                 layout(scene);
             } catch (Throwable t) {
                 errors.add(t.toString());

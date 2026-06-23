@@ -92,12 +92,9 @@ public final class CommandBar extends HBox {
         history.add(text);
         historyIndex = history.size();
         hideSuggestions();
-        for (String part : text.split(";")) {
-            String segment = part.trim();
-            if (!segment.isEmpty()) {
-                handler.run(segment);
-            }
-        }
+        // The full line (incl. its trailing ";") is passed through; the handler validates
+        // the ";" terminator and splits multiple ";"-separated commands itself.
+        handler.run(text);
         input.clear();
     }
 

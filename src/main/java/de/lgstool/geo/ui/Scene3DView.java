@@ -31,7 +31,8 @@ import javafx.scene.transform.Rotate;
  */
 public final class Scene3DView extends Pane {
 
-    private static final double AXIS = 8;
+    private static final double AXIS_RANGE = 12;   // world units each axis extends each way (looks "infinite")
+    private static final int TICK_STEP = 2;        // number every other integer to reduce clutter
     private static final int SURFACE_GRID = 26;
     private static final double SURFACE_RANGE = 6;
 
@@ -72,7 +73,7 @@ public final class Scene3DView extends Pane {
         List<GeoObject> objs = c.objects();
         for (int i = 0; i < objs.size(); i++) {
             GeoObject o = objs.get(i);
-            if (!o.isVisible()) {
+            if (!o.isVisible() || !o.isDefined()) {
                 continue;
             }
             Color color = GeoPalette.color(o, i);
@@ -157,7 +158,7 @@ public final class Scene3DView extends Pane {
     }
 
     private void addSurface(GeoObject f, Color color) {
-        if (f.params().size() != 2) {
+        if (!(f.value() instanceof Value.FunctionV fn) || fn.params().size() != 2) {
             return;
         }
         Construction c = engine.construction();
@@ -218,26 +219,53 @@ public final class Scene3DView extends Pane {
     // ---- axes ------------------------------------------------------------
 
     private void addAxes() {
-        addAxis(new Point3D(1, 0, 0), Color.web("#B23A48"), "x", AXIS, 0, 0);
-        addAxis(new Point3D(0, 1, 0), Color.web("#2E7D32"), "y", 0, AXIS, 0);
-        addAxis(new Point3D(0, 0, 1), Color.web("#1565C0"), "z", 0, 0, AXIS);
+        addAxis(new Point3D(1, 0, 0), Color.web("#B23A48"), "x");
+        addAxis(new Point3D(0, 1, 0), Color.web("#2E7D32"), "y");
+        addAxis(new Point3D(0, 0, 1), Color.web("#1565C0"), "z");
+        addTickNumbers();
     }
 
-    private void addAxis(Point3D dir, Color color, String name, double lx, double ly, double lz) {
-        double length = AXIS * scale;
+    /** A long thin box spanning both directions through the origin, plus a name at the +end. */
+    private void addAxis(Point3D dir, Color color, String name) {
+        double length = 2 * AXIS_RANGE * scale;
         Box axis = new Box(
-                dir.getX() != 0 ? length : 1.5,
-                dir.getY() != 0 ? length : 1.5,
-                dir.getZ() != 0 ? length : 1.5);
+                dir.getX() != 0 ? length : 1.2,
+                dir.getY() != 0 ? length : 1.2,
+                dir.getZ() != 0 ? length : 1.2);
         axis.setMaterial(new PhongMaterial(color));
         world.getChildren().add(axis);
 
         Text label = new Text(name);
         label.setFill(color);
         label.setFont(Font.font(22));
-        label.setTranslateX(lx * scale);
-        label.setTranslateY(-ly * scale);
-        label.setTranslateZ(lz * scale);
+        label.setTranslateX(dir.getX() * (AXIS_RANGE * scale + 8));
+        label.setTranslateY(-dir.getY() * (AXIS_RANGE * scale + 8));
+        label.setTranslateZ(dir.getZ() * (AXIS_RANGE * scale + 8));
+        world.getChildren().add(label);
+    }
+
+    /** Integer tick numbers along all three axes (0,±2,±4,…) so the grid is readable. */
+    private void addTickNumbers() {
+        Color color = Color.web(Theme.TEXT);
+        int range = (int) AXIS_RANGE;
+        for (int t = -range; t <= range; t += TICK_STEP) {
+            if (t == 0) {
+                continue;
+            }
+            addNumber(Integer.toString(t), t * scale, 0, 0, color);
+            addNumber(Integer.toString(t), 0, -t * scale, 0, color);
+            addNumber(Integer.toString(t), 0, 0, t * scale, color);
+        }
+        addNumber("0", 0, 0, 0, color);
+    }
+
+    private void addNumber(String text, double tx, double ty, double tz, Color color) {
+        Text label = new Text(text);
+        label.setFill(color);
+        label.setFont(Font.font(11));
+        label.setTranslateX(tx + 3);
+        label.setTranslateY(ty + 3);
+        label.setTranslateZ(tz);
         world.getChildren().add(label);
     }
 

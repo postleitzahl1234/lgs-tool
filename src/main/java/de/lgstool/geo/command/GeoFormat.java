@@ -12,6 +12,8 @@ public final class GeoFormat {
     public static String value(Value v) {
         return switch (v) {
             case Value.NumberV n -> num(n.v());
+            case Value.BooleanV b -> b.value() ? "true" : "false";
+            case Value.ComplexV z -> complex(z);
             case Value.PointV p -> p.is3D()
                     ? "(" + num(p.x()) + ", " + num(p.y()) + ", " + num(p.z()) + ")"
                     : "(" + num(p.x()) + ", " + num(p.y()) + ")";
@@ -28,7 +30,48 @@ public final class GeoFormat {
             case Value.PolygonV poly -> "Vieleck (" + poly.vertices().size() + " Ecken)";
             case Value.ConicV con -> "Kegelschnitt";
             case Value.LocusV loc -> "Ortslinie (" + loc.points().size() + " Punkte)";
+            case Value.MatrixV m -> matrix(m);
+            case Value.ListV l -> list(l);
+            case Value.TextV t -> "“" + t.text() + "”";
+            case Value.ImplicitV im -> im.label();
         };
+    }
+
+    private static String complex(Value.ComplexV z) {
+        if (Math.abs(z.im()) < 1e-12) {
+            return num(z.re());
+        }
+        if (Math.abs(z.re()) < 1e-12) {
+            return num(z.im()) + "i";
+        }
+        return num(z.re()) + (z.im() < 0 ? " - " : " + ") + num(Math.abs(z.im())) + "i";
+    }
+
+    private static String matrix(Value.MatrixV m) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < m.rowCount(); i++) {
+            if (i > 0) {
+                sb.append("; ");
+            }
+            for (int j = 0; j < m.colCount(); j++) {
+                if (j > 0) {
+                    sb.append(", ");
+                }
+                sb.append(m.rows()[i][j]);
+            }
+        }
+        return sb.append("]").toString();
+    }
+
+    private static String list(Value.ListV l) {
+        StringBuilder sb = new StringBuilder("{");
+        for (int i = 0; i < l.items().size(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(value(l.items().get(i)));
+        }
+        return sb.append("}").toString();
     }
 
     /** Formats a double with up to 4 decimals, trimming trailing zeros. */

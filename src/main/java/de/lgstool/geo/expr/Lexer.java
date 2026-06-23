@@ -39,8 +39,45 @@ final class Lexer {
         if (Character.isLetter(c)) {
             return ident();
         }
+        if (c == '"') {
+            return string();
+        }
         int at = pos;
+        char nx = pos + 1 < src.length() ? src.charAt(pos + 1) : '\0';
         pos++;
+        switch (c) {
+            case '<' -> {
+                if (nx == '=') {
+                    pos++;
+                    return new Token(TokenType.LE, "<=", 0, at);
+                }
+                return new Token(TokenType.LT, "<", 0, at);
+            }
+            case '>' -> {
+                if (nx == '=') {
+                    pos++;
+                    return new Token(TokenType.GE, ">=", 0, at);
+                }
+                return new Token(TokenType.GT, ">", 0, at);
+            }
+            case '=' -> {
+                if (nx == '=') {
+                    pos++;
+                    return new Token(TokenType.EQEQ, "==", 0, at);
+                }
+                return new Token(TokenType.EQUALS, "=", 0, at);
+            }
+            case '!' -> {
+                if (nx == '=') {
+                    pos++;
+                    return new Token(TokenType.NEQ, "!=", 0, at);
+                }
+                throw new EvalException("Unerwartetes Zeichen '!'.");
+            }
+            default -> {
+                // fall through to the single-character operators below
+            }
+        }
         return switch (c) {
             case '+' -> new Token(TokenType.PLUS, "+", 0, at);
             case '-' -> new Token(TokenType.MINUS, "-", 0, at);
@@ -49,8 +86,11 @@ final class Lexer {
             case '^' -> new Token(TokenType.CARET, "^", 0, at);
             case '(' -> new Token(TokenType.LPAREN, "(", 0, at);
             case ')' -> new Token(TokenType.RPAREN, ")", 0, at);
+            case '{' -> new Token(TokenType.LBRACE, "{", 0, at);
+            case '}' -> new Token(TokenType.RBRACE, "}", 0, at);
             case ',' -> new Token(TokenType.COMMA, ",", 0, at);
-            case '=' -> new Token(TokenType.EQUALS, "=", 0, at);
+            case '&' -> new Token(TokenType.AMP, "&", 0, at);
+            case '|' -> new Token(TokenType.PIPE, "|", 0, at);
             default -> throw new EvalException("Unerwartetes Zeichen '" + c + "'.");
         };
     }
@@ -75,6 +115,21 @@ final class Lexer {
         } catch (NumberFormatException e) {
             throw new EvalException("Ungültige Zahl '" + text + "'.");
         }
+    }
+
+    private Token string() {
+        int at = pos;
+        pos++;   // opening quote
+        StringBuilder sb = new StringBuilder();
+        while (pos < src.length() && src.charAt(pos) != '"') {
+            sb.append(src.charAt(pos));
+            pos++;
+        }
+        if (pos >= src.length()) {
+            throw new EvalException("Nicht geschlossener Text (\").");
+        }
+        pos++;   // closing quote
+        return new Token(TokenType.STRING, sb.toString(), 0, at);
     }
 
     private Token ident() {

@@ -79,6 +79,10 @@ public final class SettingsDialog {
         suggestions.setSelected(Settings.suggestionsEnabled);
         suggestions.selectedProperty().addListener((o, a, b) -> Settings.suggestionsEnabled = b);
 
+        CheckBox snap = new CheckBox(I18n.t("settings.snap"));
+        snap.setSelected(Settings.snapToGrid);
+        snap.selectedProperty().addListener((o, a, b) -> Settings.snapToGrid = b);
+
         Spinner<Integer> precision = new Spinner<>(1, 15, Settings.decimalPrecision);
         precision.setMaxWidth(90);
         precision.valueProperty().addListener((o, a, b) -> Settings.decimalPrecision = b);
@@ -100,9 +104,12 @@ public final class SettingsDialog {
 
         Button close = new Button(I18n.t("common.close"));
         close.setStyle("-fx-background-color: " + Theme.ACCENT_PETROL + "; -fx-text-fill: white;");
-        close.setOnAction(e -> stage.close());
+        close.setOnAction(e -> {
+            Settings.save();
+            stage.close();
+        });
 
-        VBox root = new VBox(14, title, languageLabel, language, fullscreen, darkMode, suggestions,
+        VBox root = new VBox(14, title, languageLabel, language, fullscreen, darkMode, suggestions, snap,
                 displayLabel, frac, dec, precisionRow, about, close);
         root.setPadding(new Insets(24));
         root.setStyle("-fx-background-color: " + Theme.BACKGROUND + ";");

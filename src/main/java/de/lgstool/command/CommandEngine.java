@@ -91,6 +91,7 @@ public final class CommandEngine {
 
             // ---- editing a single system ----
             case "add" -> edit.add(c, ctx);
+            case "eq" -> edit.eq(c, ctx);
             case "swap" -> edit.swap(c, ctx);
             case "scale" -> edit.scale(c, ctx);
             case "combine" -> edit.combine(c, ctx);

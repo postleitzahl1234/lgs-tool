@@ -32,7 +32,46 @@ public final class Parser {
     }
 
     private Expr expr() {
-        return additive();
+        return orExpr();
+    }
+
+    private Expr orExpr() {
+        Expr left = andExpr();
+        while (peek().type() == TokenType.PIPE) {
+            advance();
+            left = new Expr.Bin('|', left, andExpr());
+        }
+        return left;
+    }
+
+    private Expr andExpr() {
+        Expr left = comparison();
+        while (peek().type() == TokenType.AMP) {
+            advance();
+            left = new Expr.Bin('&', left, comparison());
+        }
+        return left;
+    }
+
+    /** A single (non-associative) comparison: {@code a < b}, {@code a == b}, … */
+    private Expr comparison() {
+        Expr left = additive();
+        char op = switch (peek().type()) {
+            case LT -> '<';
+            case GT -> '>';
+            case LE -> 'l';     // <=
+            case GE -> 'g';     // >=
+            case EQEQ -> 'e';   // ==
+            case EQUALS -> 'e'; // a lone '=' inside an expression is equality (e.g. Solve(x^2 = 4));
+                                // a top-level assignment '=' is consumed by the engine before parsing
+            case NEQ -> 'n';    // !=
+            default -> 0;
+        };
+        if (op != 0) {
+            advance();
+            return new Expr.Bin(op, left, additive());
+        }
+        return left;
     }
 
     private Expr additive() {
@@ -79,7 +118,13 @@ public final class Parser {
         switch (t.type()) {
             case NUMBER -> {
                 advance();
-                return new Expr.Num(t.number());
+                Expr n = new Expr.Num(t.number(), t.text());
+                // Implicit multiplication: a number immediately followed by an identifier or
+                // a parenthesis (e.g. 4i, 2x, 3pi, 2(x+1)) means multiplication.
+                if (peek().type() == TokenType.IDENT || peek().type() == TokenType.LPAREN) {
+                    return new Expr.Bin('*', n, power());
+                }
+                return n;
             }
             case IDENT -> {
                 advance();
@@ -90,6 +135,13 @@ public final class Parser {
             }
             case LPAREN -> {
                 return parenOrTuple();
+            }
+            case LBRACE -> {
+                return braceList();
+            }
+            case STRING -> {
+                advance();
+                return new Expr.Str(t.text());
             }
             default -> throw new EvalException("Unerwartetes Zeichen: '" + t.text() + "'.");
         }
@@ -105,6 +157,20 @@ public final class Parser {
         }
         expect(TokenType.RPAREN);
         return parts.size() == 1 ? parts.get(0) : new Expr.Tuple(parts);
+    }
+
+    private Expr braceList() {
+        expect(TokenType.LBRACE);
+        List<Expr> items = new ArrayList<>();
+        if (peek().type() != TokenType.RBRACE) {
+            items.add(expr());
+            while (peek().type() == TokenType.COMMA) {
+                advance();
+                items.add(expr());
+            }
+        }
+        expect(TokenType.RBRACE);
+        return new Expr.ListLit(items);
     }
 
     private List<Expr> argList() {

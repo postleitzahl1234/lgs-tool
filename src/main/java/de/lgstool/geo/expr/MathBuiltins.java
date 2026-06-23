@@ -22,7 +22,7 @@ public final class MathBuiltins implements BuiltinFunctions {
         double apply(double a, double b);
     }
 
-    private final Map<String, Unary> unary = Map.ofEntries(
+    private static final Map<String, Unary> UNARY = Map.ofEntries(
             Map.entry("sin", Math::sin),
             Map.entry("cos", Math::cos),
             Map.entry("tan", Math::tan),
@@ -40,7 +40,7 @@ public final class MathBuiltins implements BuiltinFunctions {
             Map.entry("round", (double a) -> (double) Math.round(a)),
             Map.entry("sign", Math::signum));
 
-    private final Map<String, Binary> binary = Map.ofEntries(
+    private static final Map<String, Binary> BINARY = Map.ofEntries(
             Map.entry("min", Math::min),
             Map.entry("max", Math::max),
             Map.entry("mod", (a, b) -> a % b),
@@ -50,18 +50,18 @@ public final class MathBuiltins implements BuiltinFunctions {
     @Override
     public boolean has(String name) {
         String key = name.toLowerCase(Locale.ROOT);
-        return unary.containsKey(key) || binary.containsKey(key);
+        return UNARY.containsKey(key) || BINARY.containsKey(key);
     }
 
     @Override
     public Value call(String name, List<Value> args, FunctionApplier applier) {
         String key = name.toLowerCase(Locale.ROOT);
-        Unary u = unary.get(key);
+        Unary u = UNARY.get(key);
         if (u != null) {
             requireArity(name, args, 1);
             return new Value.NumberV(u.apply(num(name, args.get(0))));
         }
-        Binary b = binary.get(key);
+        Binary b = BINARY.get(key);
         if (b != null) {
             requireArity(name, args, 2);
             return new Value.NumberV(b.apply(num(name, args.get(0)), num(name, args.get(1))));

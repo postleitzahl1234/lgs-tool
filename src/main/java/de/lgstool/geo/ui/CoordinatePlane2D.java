@@ -1,8 +1,11 @@
 package de.lgstool.geo.ui;
 
+import de.lgstool.config.Settings;
 import de.lgstool.config.Theme;
 import de.lgstool.geo.command.GeoEngine;
+import de.lgstool.geo.expr.Evaluator;
 import de.lgstool.geo.expr.Expr;
+import de.lgstool.geo.expr.NameResolver;
 import de.lgstool.geo.expr.Value;
 import de.lgstool.geo.model.Construction;
 import de.lgstool.geo.model.GeoObject;
@@ -14,8 +17,9 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.scene.text.FontWeight;
 
 /**
@@ -86,6 +90,9 @@ public final class CoordinatePlane2D extends Pane {
         if (w <= 0 || h <= 0) {
             return;
         }
+        // Rounded caps/joins make function graphs, polygons and vectors render smoothly.
+        g.setLineCap(StrokeLineCap.ROUND);
+        g.setLineJoin(StrokeLineJoin.ROUND);
         correctAspect(w, h);
         drawGrid(g, w, h);
         drawObjects(g, w, h);
@@ -143,28 +150,38 @@ public final class CoordinatePlane2D extends Pane {
         g.strokeLine(0, sy(0, h), w, sy(0, h));
         g.strokeLine(sx(0, w), 0, sx(0, w), h);
 
-        // Axis tick numbers — clamped so they stay visible when the origin is off-screen.
-        g.setFill(Color.web(Theme.TEXT, 0.8));
+        // Axis tick numbers — clamped so they stay visible when the origin is off-screen,
+        // each drawn with a background halo so it stays readable over the grid and objects.
         g.setFont(Font.font("Consolas", 11));
+        Color tickColor = Color.web(Theme.TEXT, 0.85);
         double labelBaseline = Math.max(12, Math.min(h - 4, sy(0, h) + 12));
         double labelX = Math.max(4, Math.min(w - 26, sx(0, w) + 4));
         for (double x = Math.ceil(vx0 / step) * step; x <= vx1; x += step) {
             if (Math.abs(x) > 1e-9) {
-                g.fillText(trim(x), sx(x, w) + 2, labelBaseline);
+                haloLabel(g, trim(x), sx(x, w) + 2, labelBaseline, tickColor);
             }
         }
         for (double y = Math.ceil(vy0 / step) * step; y <= vy1; y += step) {
             if (Math.abs(y) > 1e-9) {
-                g.fillText(trim(y), labelX, sy(y, h) - 2);
+                haloLabel(g, trim(y), labelX, sy(y, h) - 2, tickColor);
             }
         }
-        g.fillText("0", Math.max(4, sx(0, w) + 4), Math.max(12, Math.min(h - 4, sy(0, h) + 12)));
+        haloLabel(g, "0", Math.max(4, sx(0, w) + 4), Math.max(12, Math.min(h - 4, sy(0, h) + 12)), tickColor);
 
         // Axis names at the ends.
-        g.setFill(Color.web(Theme.ACCENT_PETROL));
         g.setFont(Font.font("System", FontWeight.BOLD, 14));
-        g.fillText("x", w - 14, Math.max(16, Math.min(h - 6, sy(0, h) - 6)));
-        g.fillText("y", Math.max(6, Math.min(w - 16, sx(0, w) + 6)), 16);
+        Color axisColor = Color.web(Theme.ACCENT_PETROL);
+        haloLabel(g, "x", w - 14, Math.max(16, Math.min(h - 6, sy(0, h) - 6)), axisColor);
+        haloLabel(g, "y", Math.max(6, Math.min(w - 16, sx(0, w) + 6)), 16, axisColor);
+    }
+
+    /** Draws text with a soft background outline so it stays legible over any backdrop. */
+    private void haloLabel(GraphicsContext g, String text, double x, double y, Color fill) {
+        g.setLineWidth(3);
+        g.setStroke(Color.web(Theme.BACKGROUND, 0.85));
+        g.strokeText(text, x, y);
+        g.setFill(fill);
+        g.fillText(text, x, y);
     }
 
     // ---- objects ---------------------------------------------------------
@@ -174,7 +191,7 @@ public final class CoordinatePlane2D extends Pane {
         List<GeoObject> objs = c.objects();
         for (int i = 0; i < objs.size(); i++) {
             GeoObject o = objs.get(i);
-            if (!o.isVisible()) {
+            if (!o.isVisible() || !o.isDefined()) {
                 continue;
             }
             Color color = colorFor(o, i);
@@ -188,8 +205,11 @@ public final class CoordinatePlane2D extends Pane {
                 case Value.LocusV loc -> drawLocus(g, w, h, loc, color);
                 case Value.FunctionV ignored -> drawFunction(g, w, h, o, color);
                 case Value.PointV p -> drawPoint(g, w, h, p, o.name(), color);
+                case Value.ListV list -> drawList(g, w, h, list, color);
+                case Value.TextV t -> drawText(g, w, h, t, color);
+                case Value.ImplicitV im -> drawImplicit(g, w, h, im, color);
                 default -> {
-                    // 3D objects (plane/sphere/3D point/line) are not drawn here
+                    // 3D objects (plane/sphere/3D point/line) and matrices are not drawn here
                 }
             }
         }
@@ -206,9 +226,8 @@ public final class CoordinatePlane2D extends Pane {
         g.setStroke(Color.web(Theme.BACKGROUND));
         g.setLineWidth(1.2);
         g.strokeOval(px - 4.5, py - 4.5, 9, 9);
-        g.setFill(Color.web(Theme.TEXT));
         g.setFont(Font.font("System", FontWeight.BOLD, 12));
-        g.fillText(name, px + 7, py - 7);
+        haloLabel(g, name, px + 7, py - 7, Color.web(Theme.TEXT));
     }
 
     private void drawLine(GraphicsContext g, double w, double h, Value.LineV line, Color color) {
@@ -309,21 +328,25 @@ public final class CoordinatePlane2D extends Pane {
         int n = 130;
         double dx = (vx1 - vx0) / n;
         double dy = (vy1 - vy0) / n;
+        // Sample the conic once per grid corner; each interior corner is shared by up to
+        // four cells, so caching avoids ~4× redundant evaluations and seam artefacts.
+        double[][] f = new double[n + 1][n + 1];
+        for (int i = 0; i <= n; i++) {
+            double x = vx0 + i * dx;
+            for (int j = 0; j <= n; j++) {
+                f[i][j] = conicValue(con, x, vy0 + j * dy);
+            }
+        }
         for (int i = 0; i < n; i++) {
+            double x = vx0 + i * dx;
             for (int j = 0; j < n; j++) {
-                double x = vx0 + i * dx;
-                double y = vy0 + j * dy;
-                marchCell(g, w, h, con, x, y, dx, dy);
+                marchCell(g, w, h, x, vy0 + j * dy, dx, dy, f[i][j], f[i + 1][j], f[i + 1][j + 1], f[i][j + 1]);
             }
         }
     }
 
-    private void marchCell(GraphicsContext g, double w, double h, Value.ConicV c,
-            double x, double y, double dx, double dy) {
-        double f00 = conicValue(c, x, y);
-        double f10 = conicValue(c, x + dx, y);
-        double f11 = conicValue(c, x + dx, y + dy);
-        double f01 = conicValue(c, x, y + dy);
+    private void marchCell(GraphicsContext g, double w, double h, double x, double y, double dx, double dy,
+            double f00, double f10, double f11, double f01) {
         List<double[]> pts = new ArrayList<>(4);
         crossing(pts, x, y, f00, x + dx, y, f10);
         crossing(pts, x + dx, y, f10, x + dx, y + dy, f11);
@@ -349,8 +372,53 @@ public final class CoordinatePlane2D extends Pane {
         return c.a() * x * x + c.b() * x * y + c.c() * y * y + c.d() * x + c.e() * y + c.f();
     }
 
+    /**
+     * Draws the zero contour of an implicit equation {@code expr(x,y) = 0} via marching
+     * squares. The expression is evaluated live against the construction (so it tracks
+     * any referenced objects), with {@code x}/{@code y} bound to each grid corner.
+     */
+    private void drawImplicit(GraphicsContext g, double w, double h, Value.ImplicitV im, Color color) {
+        double[] xy = new double[2];
+        NameResolver scope = name -> switch (name) {
+            case "x" -> new Value.NumberV(xy[0]);
+            case "y" -> new Value.NumberV(xy[1]);
+            default -> engine.construction().valueOf(name);
+        };
+        Evaluator ev = new Evaluator(scope, engine.construction().builtins());
+        g.setStroke(color);
+        g.setLineWidth(2);
+        int n = 140;
+        double dx = (vx1 - vx0) / n;
+        double dy = (vy1 - vy0) / n;
+        double[][] f = new double[n + 1][n + 1];
+        for (int i = 0; i <= n; i++) {
+            double x = vx0 + i * dx;
+            for (int j = 0; j <= n; j++) {
+                xy[0] = x;
+                xy[1] = vy0 + j * dy;
+                f[i][j] = implicitValue(ev, im.expr());
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            double x = vx0 + i * dx;
+            for (int j = 0; j < n; j++) {
+                marchCell(g, w, h, x, vy0 + j * dy, dx, dy, f[i][j], f[i + 1][j], f[i + 1][j + 1], f[i][j + 1]);
+            }
+        }
+    }
+
+    private static double implicitValue(Evaluator ev, Expr expr) {
+        try {
+            return ev.eval(expr) instanceof Value.NumberV n ? n.v() : Double.NaN;
+        } catch (RuntimeException e) {
+            return Double.NaN;   // undefined here (e.g. division by zero) → no contour crossing
+        }
+    }
+
     private void drawFunction(GraphicsContext g, double w, double h, GeoObject f, Color color) {
-        if (f.params().size() != 1) {
+        // Read the arity from the value, not the object's declaration: a derived function
+        // (e.g. g = Derivative(f)) holds a 1-arg FunctionV but has no f(x)= parameter list.
+        if (!(f.value() instanceof Value.FunctionV fn) || fn.params().size() != 1) {
             return;   // multivariate functions are drawn in 3D
         }
         Construction c = engine.construction();
@@ -390,6 +458,31 @@ public final class CoordinatePlane2D extends Pane {
         g.stroke();
     }
 
+    private void drawList(GraphicsContext g, double w, double h, Value.ListV list, Color color) {
+        for (Value item : list.items()) {
+            switch (item) {
+                case Value.PointV p -> {
+                    if (!p.is3D()) {
+                        g.setFill(color);
+                        g.fillOval(sx(p.x(), w) - 3.5, sy(p.y(), h) - 3.5, 7, 7);
+                    }
+                }
+                case Value.SegmentV s -> drawSegment(g, w, h, s, color);
+                default -> {
+                    // non-plottable list items (numbers, nested lists) live in the list/log only
+                }
+            }
+        }
+    }
+
+    private void drawText(GraphicsContext g, double w, double h, Value.TextV t, Color color) {
+        if (t.anchor() == null || t.anchor().is3D()) {
+            return;   // unanchored text shows in the algebra list only
+        }
+        g.setFont(Font.font("System", FontWeight.BOLD, 14));
+        haloLabel(g, t.text(), sx(t.anchor().x(), w) + 4, sy(t.anchor().y(), h) - 4, color);
+    }
+
     private Color colorFor(GeoObject o, int index) {
         return GeoPalette.color(o, index);
     }
@@ -416,7 +509,14 @@ public final class CoordinatePlane2D extends Pane {
             double w = canvas.getWidth();
             double h = canvas.getHeight();
             if (dragName != null) {
-                engine.setFreeValueLive(dragName, Value.PointV.of2D(wx(e.getX(), w), wy(e.getY(), h)));
+                double worldX = wx(e.getX(), w);
+                double worldY = wy(e.getY(), h);
+                if (Settings.snapToGrid || e.isShiftDown()) {
+                    double step = niceStep((vx1 - vx0) / 10);
+                    worldX = Math.round(worldX / step) * step;
+                    worldY = Math.round(worldY / step) * step;
+                }
+                engine.setFreeValueLive(dragName, Value.PointV.of2D(worldX, worldY));
             } else if (panning) {
                 double dx = (e.getX() - pressX) / w * (sVx1 - sVx0);
                 double dy = (e.getY() - pressY) / h * (sVy1 - sVy0);

@@ -18,11 +18,13 @@ public final class Differentiator {
     public static Expr differentiate(Expr e, String var) {
         return switch (e) {
             case Expr.Num ignored -> num(0);
+            case Expr.Str ignored -> throw new EvalException("Ableitung von Text ist nicht definiert.");
             case Expr.Ref r -> num(r.name().equals(var) ? 1 : 0);
             case Expr.Unary u -> u.op() == '-' ? neg(differentiate(u.operand(), var)) : differentiate(u.operand(), var);
             case Expr.Bin b -> bin(b, var);
             case Expr.Call c -> call(c, var);
             case Expr.Tuple ignored -> throw new EvalException("Ableitung eines Punktes ist nicht definiert.");
+            case Expr.ListLit ignored -> throw new EvalException("Ableitung einer Liste/Matrix ist nicht definiert.");
         };
     }
 

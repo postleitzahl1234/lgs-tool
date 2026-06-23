@@ -31,6 +31,8 @@ public final class GeoObject {
     private Value value;
     private boolean visible = true;
     private String colorHex;
+    private boolean defined = true;
+    private String undefinedReason;
 
     private boolean slider;
     private double sliderMin;
@@ -88,6 +90,29 @@ public final class GeoObject {
         return GeoType.of(value);
     }
 
+    /**
+     * Whether this object's value is currently valid. A dependent object whose
+     * re-evaluation fails (e.g. {@code Det(M)} after {@code M} becomes non-square) is
+     * marked undefined instead of poisoning the whole construction.
+     */
+    public boolean isDefined() {
+        return defined;
+    }
+
+    public String undefinedReason() {
+        return undefinedReason;
+    }
+
+    public void markDefined() {
+        this.defined = true;
+        this.undefinedReason = null;
+    }
+
+    public void markUndefined(String reason) {
+        this.defined = false;
+        this.undefinedReason = reason;
+    }
+
     public boolean isVisible() {
         return visible;
     }
@@ -136,6 +161,8 @@ public final class GeoObject {
         GeoObject c = new GeoObject(name, kind, definition, dependencies, params, source, value);
         c.visible = visible;
         c.colorHex = colorHex;
+        c.defined = defined;
+        c.undefinedReason = undefinedReason;
         c.slider = slider;
         c.sliderMin = sliderMin;
         c.sliderMax = sliderMax;

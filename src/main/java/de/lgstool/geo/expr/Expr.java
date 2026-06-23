@@ -10,10 +10,19 @@ import java.util.Set;
  */
 public sealed interface Expr {
 
-    record Num(double value) implements Expr {
+    /** A numeric literal. {@code text} keeps the exact source ({@code "1/2"}, {@code "0.25"}) for
+     *  exact rational evaluation; it is {@code null} for numbers synthesized in code. */
+    record Num(double value, String text) implements Expr {
+        public Num(double value) {
+            this(value, null);
+        }
     }
 
     record Ref(String name) implements Expr {
+    }
+
+    /** A string literal {@code "..."} — evaluates to a text object. */
+    record Str(String value) implements Expr {
     }
 
     record Unary(char op, Expr operand) implements Expr {
@@ -28,6 +37,11 @@ public sealed interface Expr {
     record Tuple(List<Expr> components) implements Expr {
     }
 
+    /** A brace literal {@code {a, b, c}} — a list, or (when its items are equal-length numeric
+     *  lists) a matrix. */
+    record ListLit(List<Expr> items) implements Expr {
+    }
+
     /**
      * Collects every identifier referenced by the tree — both bare {@link Ref}s and
      * {@link Call} names. A construction intersects this with its existing object
@@ -36,6 +50,8 @@ public sealed interface Expr {
     static void collectNames(Expr e, Set<String> out) {
         switch (e) {
             case Num ignored -> {
+            }
+            case Str ignored -> {
             }
             case Ref r -> out.add(r.name());
             case Unary u -> collectNames(u.operand(), out);
@@ -52,6 +68,11 @@ public sealed interface Expr {
             case Tuple t -> {
                 for (Expr comp : t.components()) {
                     collectNames(comp, out);
+                }
+            }
+            case ListLit l -> {
+                for (Expr item : l.items()) {
+                    collectNames(item, out);
                 }
             }
         }

@@ -9,6 +9,7 @@ import static de.lgstool.command.CommandUtil.reqInt;
 
 import de.lgstool.config.I18n;
 import de.lgstool.math.Fraction;
+import de.lgstool.math.LinearEquation;
 import de.lgstool.math.Roman;
 import de.lgstool.model.Lgs;
 import java.util.ArrayList;
@@ -57,6 +58,30 @@ final class EditCommands {
         }
         core.recordUndo();
         lgs.addEquation(coeffs, rhs, rowIdx);
+        core.ui().lgsChanged(lgs.name());
+        return CommandResult.ok(rowIdx == null ? I18n.t("m.eqEntered") : I18n.t("m.rowOverwritten", rowIdx));
+    }
+
+    CommandResult eq(ParsedCommand c, CommandContext ctx) throws CommandException {
+        Lgs lgs = core.lgsOf(ctx);
+        if (c.argCount() < 1) {
+            throw new CommandException(I18n.t("m.eqNeedsExpr"));
+        }
+        LinearEquation.Parsed parsed;
+        try {
+            parsed = LinearEquation.parse(c.arg(0), lgs.variableNames());
+        } catch (IllegalArgumentException e) {
+            throw new CommandException(e.getMessage());
+        }
+        Integer rowIdx = null;
+        if (c.argCount() >= 2) {
+            rowIdx = reqInt(c.arg(1), I18n.t("w.row"));
+            if (rowIdx < 1 || rowIdx > lgs.height()) {
+                throw new CommandException(I18n.t("m.rowNotExist", rowIdx, lgs.height()));
+            }
+        }
+        core.recordUndo();
+        lgs.addEquation(parsed.coefficients(), parsed.rhs(), rowIdx);
         core.ui().lgsChanged(lgs.name());
         return CommandResult.ok(rowIdx == null ? I18n.t("m.eqEntered") : I18n.t("m.rowOverwritten", rowIdx));
     }

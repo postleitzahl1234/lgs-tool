@@ -18,6 +18,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) {
+        Settings.load();                               // restore language, theme and preferences
         AppController controller = new AppController(stage);
         // Full screen bounds (incl. the taskbar area) so true fullscreen has no
         // size mismatch; maximized is the fallback when fullscreen is toggled off.
@@ -36,9 +37,17 @@ public class App extends Application {
         stage.setMaximized(true);
         stage.show();
 
-        // Applying fullscreen after show() is more reliable on Windows; this hides
-        // the taskbar and covers the whole screen.
+        // Applying fullscreen after show() is more reliable on Windows; true fullscreen
+        // covers the whole screen and sits above the Windows taskbar.
         stage.setFullScreen(Settings.startFullscreen);
+        // Make sure the window comes to the front ahead of other windows on launch.
+        stage.toFront();
+        stage.requestFocus();
+    }
+
+    @Override
+    public void stop() {
+        Settings.save();                               // persist preferences on exit
     }
 
     public static void main(String[] args) {

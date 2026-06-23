@@ -1,11 +1,17 @@
 package de.lgstool.geo.command;
 
 import de.lgstool.config.I18n;
+import de.lgstool.geo.expr.BuiltinFunctions;
+import de.lgstool.geo.expr.CasBuiltins;
+import de.lgstool.geo.expr.ComplexBuiltins;
 import de.lgstool.geo.expr.CompositeBuiltins;
 import de.lgstool.geo.expr.EvalException;
 import de.lgstool.geo.expr.Expr;
+import de.lgstool.geo.expr.ListBuiltins;
 import de.lgstool.geo.expr.MathBuiltins;
+import de.lgstool.geo.expr.MatrixBuiltins;
 import de.lgstool.geo.expr.Parser;
+import de.lgstool.geo.expr.StatsBuiltins;
 import de.lgstool.geo.expr.Value;
 import de.lgstool.geo.io.GeoStorage;
 import de.lgstool.geo.model.Construction;
@@ -15,8 +21,12 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,7 +57,13 @@ public final class GeoEngine {
     private GeoView view = GeoView.NONE;
 
     private static Construction newConstruction() {
-        return new Construction(new CompositeBuiltins(new GeoBuiltins(), new MathBuiltins()));
+        BuiltinFunctions builtins = new CompositeBuiltins(new GeoBuiltins(),
+                new CompositeBuiltins(new MatrixBuiltins(),
+                        new CompositeBuiltins(new StatsBuiltins(),
+                                new CompositeBuiltins(new CasBuiltins(),
+                                        new CompositeBuiltins(new ComplexBuiltins(),
+                                                new CompositeBuiltins(new ListBuiltins(), new MathBuiltins()))))));
+        return new Construction(builtins);
     }
 
     public Construction construction() {
@@ -118,22 +134,65 @@ public final class GeoEngine {
             return GeoResult.error(I18n.t("geo.missingDef"));
         }
         Matcher fn = FUNCTION_DEF.matcher(left);
-        if (fn.matches()) {
+        if (fn.matches() && allSimpleParams(fn.group(2))) {
             return defineFunction(fn.group(1), splitParams(fn.group(2)), right);
         }
-        if (!IDENT.matcher(left).matches()) {
-            return GeoResult.error(I18n.t("geo.invalidName", left));
+        // A plain identifier on the left is an assignment — unless it is a plotting
+        // variable x/y (not already an object) and the right side actually uses x or y,
+        // in which case "y = x^2" is an implicit curve (GeoGebra-style). "y = 4" stays a
+        // plain assignment so existing number/object semantics are preserved.
+        boolean reservedPlotVar = (left.equals("x") || left.equals("y"))
+                && !construction.contains(left) && referencesPlotVar(right);
+        if (IDENT.matcher(left).matches() && !reservedPlotVar) {
+            Expr ast = Parser.parse(right);
+            if (asSlider(ast) != null) {
+                return defineSlider(left, right, (Expr.Call) ast);
+            }
+            if (asLocus(ast) != null) {
+                return defineLocus(left, right, (Expr.Call) ast);
+            }
+            snapshot();
+            GeoObject obj = construction.define(left, right, ast, null);
+            return committed(obj);
         }
-        Expr ast = Parser.parse(right);
-        if (asSlider(ast) != null) {
-            return defineSlider(left, right, (Expr.Call) ast);
-        }
-        if (asLocus(ast) != null) {
-            return defineLocus(left, right, (Expr.Call) ast);
+        // Otherwise treat "LHS = RHS" as an implicit equation in x and y.
+        return defineImplicit(left, right);
+    }
+
+    /** Builds an implicit curve {@code LHS - RHS = 0} (must involve the plot variables x/y). */
+    private GeoResult defineImplicit(String left, String right) {
+        Expr lhs = Parser.parse(left);
+        Expr rhs = Parser.parse(right);
+        Expr diff = new Expr.Bin('-', lhs, rhs);
+        Set<String> names = new HashSet<>();
+        Expr.collectNames(diff, names);
+        if (!names.contains("x") && !names.contains("y")) {
+            return GeoResult.error(I18n.t("geo.notEquationXY"));
         }
         snapshot();
-        GeoObject obj = construction.define(left, right, ast, null);
+        String label = left + " = " + right;
+        GeoObject obj = construction.defineLiteral(autoName(false), label, new Value.ImplicitV(diff, label));
         return committed(obj);
+    }
+
+    /** Whether an expression source references the plot variables x or y (parse-tolerant). */
+    private static boolean referencesPlotVar(String source) {
+        try {
+            Set<String> names = new HashSet<>();
+            Expr.collectNames(Parser.parse(source), names);
+            return names.contains("x") || names.contains("y");
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static boolean allSimpleParams(String inside) {
+        for (String p : inside.split(",")) {
+            if (!IDENT.matcher(p.trim()).matches()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private GeoResult defineFunction(String name, List<String> params, String right) {
@@ -278,6 +337,54 @@ public final class GeoEngine {
         return replayLine(o);
     }
 
+    /**
+     * Renames an object, rewriting every reference to it. Implemented by replaying the
+     * whole construction with the identifier substituted, so dependents stay intact;
+     * colours are preserved by name.
+     */
+    public GeoResult rename(String oldName, String newName) {
+        String nn = newName == null ? "" : newName.trim();
+        if (!construction.contains(oldName)) {
+            return GeoResult.error(I18n.t("geo.notExists", oldName));
+        }
+        if (!IDENT.matcher(nn).matches()) {
+            return GeoResult.error(I18n.t("geo.invalidName", nn));
+        }
+        if (nn.equals(oldName)) {
+            return GeoResult.ok(nn);
+        }
+        if (construction.contains(nn)) {
+            return GeoResult.error(I18n.t("geo.exists", nn));
+        }
+        Map<String, String> colors = new HashMap<>();
+        for (GeoObject o : construction.objects()) {
+            colors.put(o.name().equals(oldName) ? nn : o.name(), o.colorHex());
+        }
+        List<String> lines = new ArrayList<>();
+        for (String l : exportLines()) {
+            lines.add(replaceIdentifier(l, oldName, nn));
+        }
+        snapshot();
+        GeoEngine temp = new GeoEngine();
+        for (String l : lines) {
+            temp.execute(l);
+        }
+        construction = temp.construction;
+        for (GeoObject o : construction.objects()) {
+            String c = colors.get(o.name());
+            if (c != null) {
+                o.setColorHex(c);
+            }
+        }
+        view.structureChanged();
+        return GeoResult.ok(I18n.t("geo.renamed", oldName, nn));
+    }
+
+    private static String replaceIdentifier(String line, String oldName, String newName) {
+        return Pattern.compile("\\b" + Pattern.quote(oldName) + "\\b")
+                .matcher(line).replaceAll(Matcher.quoteReplacement(newName));
+    }
+
     private List<String> exportLines() {
         List<String> out = new ArrayList<>();
         for (GeoObject o : construction.objects()) {
@@ -293,6 +400,11 @@ public final class GeoEngine {
         if (o.isSlider()) {
             return o.name() + " = Slider(" + GeoFormat.num(o.sliderMin()) + ", "
                     + GeoFormat.num(o.sliderMax()) + ", " + GeoFormat.num(o.sliderStep()) + ")";
+        }
+        if (o.value() instanceof Value.ImplicitV) {
+            // Implicit curves are auto-named bare equations ("x^2 + y^2 = 1"); replay the
+            // source as-is so re-execution recreates the implicit curve (not "name = …=…").
+            return o.source();
         }
         if (o.kind() == GeoObject.Kind.FREE) {
             // Points/numbers store their (possibly dragged) current value; other free
@@ -414,14 +526,21 @@ public final class GeoEngine {
         int depth = 0;
         for (int i = 0; i < s.length(); i++) {
             char ch = s.charAt(i);
-            if (ch == '(') {
+            if (ch == '(' || ch == '{') {
                 depth++;
-            } else if (ch == ')') {
+            } else if (ch == ')' || ch == '}') {
                 depth--;
-            } else if (ch == '=' && depth == 0) {
+            } else if (ch == '=' && depth == 0 && isLoneEquals(s, i)) {
                 return i;
             }
         }
         return -1;
+    }
+
+    /** Whether the {@code =} at {@code i} is a lone assignment, not part of {@code == <= >= !=}. */
+    private static boolean isLoneEquals(String s, int i) {
+        char prev = i > 0 ? s.charAt(i - 1) : ' ';
+        char next = i + 1 < s.length() ? s.charAt(i + 1) : ' ';
+        return prev != '<' && prev != '>' && prev != '!' && prev != '=' && next != '=';
     }
 }

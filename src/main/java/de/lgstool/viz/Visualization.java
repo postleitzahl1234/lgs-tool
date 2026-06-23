@@ -27,6 +27,8 @@ import javafx.scene.shape.Box;
 import javafx.scene.shape.CullFace;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.Sphere;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -54,6 +56,7 @@ public final class Visualization extends StackPane {
 
     private static final double DEFAULT_X = 8;
     private static final double DEFAULT_Y = 5;
+    private static final double NUMBER_OFFSET = 8;
 
     private final Canvas canvas = new Canvas();
     private final Pane threeDHolder = new Pane();
@@ -296,6 +299,8 @@ public final class Visualization extends StackPane {
         double h = canvas.getHeight();
         g.setFill(Color.web(Theme.BACKGROUND));
         g.fillRect(0, 0, w, h);
+        g.setLineCap(StrokeLineCap.ROUND);
+        g.setLineJoin(StrokeLineJoin.ROUND);
 
         if (lgs == null) {
             info.setText(I18n.t("viz.noLgs"));
@@ -384,8 +389,7 @@ public final class Visualization extends StackPane {
             double py = sy(y, h);
             g.setFill(Color.web("#D7263D"));
             g.fillOval(px - 6, py - 6, 12, 12);
-            g.setFill(Color.web(Theme.TEXT));
-            g.fillText(String.format(Locale.US, "(%.3g, %.3g)", x, y), px + 10, py - 10);
+            haloText(g, String.format(Locale.US, "(%.3g, %.3g)", x, y), px + 10, py - 10, Color.web(Theme.TEXT));
         }
         String[] names = lgs.variableNames();
         drawAxisNames(g, w, h, names[0], names.length > 1 ? names[1] : null);
@@ -539,8 +543,8 @@ public final class Visualization extends StackPane {
             double px = sx(x, w);
             g.setFill(Color.web("#D7263D"));
             g.fillOval(px - 6, cy - 6, 12, 12);
-            g.setFill(Color.web(Theme.TEXT));
-            g.fillText(lgs.variableNames()[0] + " = " + String.format(Locale.US, "%.4g", x), px + 10, cy - 12);
+            haloText(g, lgs.variableNames()[0] + " = " + String.format(Locale.US, "%.4g", x), px + 10, cy - 12,
+                    Color.web(Theme.TEXT));
         }
         if (showLabels) {
             g.setFill(Color.web(Theme.ACCENT_PETROL));
@@ -572,6 +576,7 @@ public final class Visualization extends StackPane {
             addAxisLabel(world, 8, 0, 0, names.length > 0 ? names[0] : "x", Color.web("#B23A48"));
             addAxisLabel(world, 0, 8, 0, names.length > 1 ? names[1] : "y", Color.web("#2E7D32"));
             addAxisLabel(world, 0, 0, 8, names.length > 2 ? names[2] : "z", Color.web("#1565C0"));
+            addAxisNumbers(world);
         }
 
         for (int r = 1; r <= lgs.height(); r++) {
@@ -611,6 +616,29 @@ public final class Visualization extends StackPane {
         t.setTranslateX(dx * scale3d);
         t.setTranslateY(-dy * scale3d);
         t.setTranslateZ(dz * scale3d);
+        world.getChildren().add(t);
+    }
+
+    /** Numeric tick labels (…-2,-1,1,2…) along each 3D axis, matching the drawn axis extent. */
+    private void addAxisNumbers(Group world) {
+        for (int i = -4; i <= 4; i++) {
+            if (i == 0) {
+                continue;
+            }
+            String label = Integer.toString(i);
+            addAxisNumber(world, i * scale3d, NUMBER_OFFSET, 0, label);     // x-axis
+            addAxisNumber(world, NUMBER_OFFSET, -i * scale3d, 0, label);    // y-axis (y points up)
+            addAxisNumber(world, NUMBER_OFFSET, 0, i * scale3d, label);     // z-axis
+        }
+    }
+
+    private void addAxisNumber(Group world, double tx, double ty, double tz, String text) {
+        Text t = new Text(text);
+        t.setFill(Color.web(Theme.TEXT, 0.7));
+        t.setFont(Font.font(12));
+        t.setTranslateX(tx);
+        t.setTranslateY(ty);
+        t.setTranslateZ(tz);
         world.getChildren().add(t);
     }
 
@@ -685,5 +713,14 @@ public final class Visualization extends StackPane {
 
     private static double clamp(double v, double lo, double hi) {
         return Math.max(lo, Math.min(hi, v));
+    }
+
+    /** Draws text with a soft background outline so it stays legible over lines and the grid. */
+    private void haloText(GraphicsContext g, String text, double x, double y, Color fill) {
+        g.setLineWidth(3);
+        g.setStroke(Color.web(Theme.BACKGROUND, 0.85));
+        g.strokeText(text, x, y);
+        g.setFill(fill);
+        g.fillText(text, x, y);
     }
 }

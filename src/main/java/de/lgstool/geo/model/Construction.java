@@ -70,18 +70,36 @@ public final class Construction {
 
         GeoObject existing = objects.get(name);
         GeoObject obj = new GeoObject(name, kind, ast, deps, params, source, value);
-        if (existing != null) {
-            obj.setVisible(existing.isVisible());
-            obj.setColorHex(existing.colorHex());
-        }
+        carryStyle(obj, existing);
         objects.put(name, obj);
         recomputeAll();
         return obj;
     }
 
+    /** New objects get a stable random colour; redefined ones keep their style. */
+    private static void carryStyle(GeoObject fresh, GeoObject existing) {
+        if (existing != null) {
+            fresh.setVisible(existing.isVisible());
+            fresh.setColorHex(existing.colorHex());
+        } else {
+            fresh.setColorHex(Palette.randomHex());
+        }
+    }
+
     /** Evaluates a standalone expression against the current objects (e.g. for auto-naming). */
     public Value evaluate(Expr ast) {
         return new Evaluator(this::resolve, builtins).eval(ast);
+    }
+
+    /** The current value of a named object, or {@code null} if unknown (for view-side samplers). */
+    public Value valueOf(String name) {
+        GeoObject o = objects.get(name);
+        return o == null ? null : o.value();
+    }
+
+    /** The built-in function registry (for view-side evaluation of implicit curves). */
+    public BuiltinFunctions builtins() {
+        return builtins;
     }
 
     /**
@@ -91,10 +109,7 @@ public final class Construction {
     public GeoObject defineLiteral(String name, String source, Value value) {
         GeoObject existing = objects.get(name);
         GeoObject obj = new GeoObject(name, GeoObject.Kind.FREE, new Expr.Num(0), List.of(), List.of(), source, value);
-        if (existing != null) {
-            obj.setVisible(existing.isVisible());
-            obj.setColorHex(existing.colorHex());
-        }
+        carryStyle(obj, existing);
         objects.put(name, obj);
         recomputeAll();
         return obj;
@@ -166,7 +181,15 @@ public final class Construction {
         for (String n : topologicalOrder()) {
             GeoObject o = objects.get(n);
             if (o.kind() == GeoObject.Kind.DEPENDENT) {
-                o.setValue(evaluator.eval(o.definition()));
+                // Isolate per-object failures: a dependent whose recomputation throws
+                // (e.g. Det(M) after M becomes non-square) is marked undefined instead
+                // of aborting the whole pass and poisoning the construction.
+                try {
+                    o.setValue(evaluator.eval(o.definition()));
+                    o.markDefined();
+                } catch (RuntimeException ex) {
+                    o.markUndefined(ex.getMessage());
+                }
             }
         }
     }

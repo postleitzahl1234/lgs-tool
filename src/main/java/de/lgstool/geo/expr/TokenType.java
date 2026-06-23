@@ -4,6 +4,7 @@ package de.lgstool.geo.expr;
 enum TokenType {
     NUMBER,
     IDENT,
+    STRING,
     PLUS,
     MINUS,
     STAR,
@@ -11,7 +12,17 @@ enum TokenType {
     CARET,
     LPAREN,
     RPAREN,
+    LBRACE,
+    RBRACE,
     COMMA,
     EQUALS,
+    LT,
+    GT,
+    LE,
+    GE,
+    EQEQ,
+    NEQ,
+    AMP,
+    PIPE,
     EOF
 }

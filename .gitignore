@@ -5,8 +5,9 @@ target/
 ECC-main/
 .claude/
 
-# Runtime-saved LGS systems
+# Runtime-saved LGS systems and geometry constructions
 /lgs/
+/geo/
 
 # IDE / editor
 .idea/

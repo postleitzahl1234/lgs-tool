@@ -4,6 +4,7 @@ import de.lgstool.geo.expr.BuiltinFunctions;
 import de.lgstool.geo.expr.Differentiator;
 import de.lgstool.geo.expr.EvalException;
 import de.lgstool.geo.expr.FunctionApplier;
+import de.lgstool.geo.expr.SymbolicIntegrator;
 import de.lgstool.geo.expr.Value;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,13 +39,55 @@ public final class GeoBuiltins implements BuiltinFunctions {
             Map.entry("winkel", "angle"),
             Map.entry("ellipse", "ellipse"),
             Map.entry("hyperbel", "hyperbola"),
-            Map.entry("parabel", "parabola"));
+            Map.entry("parabel", "parabola"),
+            // curve analysis
+            Map.entry("nullstelle", "root"),
+            Map.entry("extrempunkt", "extremum"),
+            Map.entry("wendepunkt", "inflectionpoint"),
+            Map.entry("normale", "normal"),
+            // measurements
+            Map.entry("länge", "length"),
+            Map.entry("laenge", "length"),
+            Map.entry("fläche", "area"),
+            Map.entry("flaeche", "area"),
+            Map.entry("flächeninhalt", "area"),
+            Map.entry("umfang", "perimeter"),
+            Map.entry("steigung", "slope"),
+            // transformations
+            Map.entry("spiegle", "reflect"),
+            Map.entry("spiegelung", "reflect"),
+            Map.entry("drehe", "rotate"),
+            Map.entry("drehung", "rotate"),
+            Map.entry("verschiebe", "translate"),
+            Map.entry("verschiebung", "translate"),
+            Map.entry("streckung", "dilate"),
+            // constructions
+            Map.entry("senkrechte", "perpendicularline"),
+            Map.entry("lot", "perpendicularline"),
+            Map.entry("parallele", "parallelline"),
+            Map.entry("mittelsenkrechte", "perpendicularbisector"),
+            Map.entry("winkelhalbierende", "anglebisector"),
+            Map.entry("punktauf", "pointon"),
+            // conic / geometry analysis
+            Map.entry("zentrum", "center"),
+            Map.entry("exzentrizität", "eccentricity"),
+            Map.entry("exzentrizitaet", "eccentricity"),
+            Map.entry("schwerpunkt", "centroid"),
+            Map.entry("krümmung", "curvature"),
+            Map.entry("kruemmung", "curvature"),
+            Map.entry("nullstellen", "roots"));
 
     private static final Set<String> NAMES = Set.of(
             "point", "vector", "midpoint", "line", "segment", "circle",
             "distance", "plane", "sphere", "intersect",
             "derivative", "integral", "tangent", "polygon", "angle",
-            "ellipse", "hyperbola", "parabola");
+            "ellipse", "hyperbola", "parabola",
+            "root", "extremum", "inflectionpoint", "normal",
+            "length", "area", "perimeter", "slope",
+            "reflect", "rotate", "translate", "dilate",
+            "perpendicularline", "parallelline", "perpendicularbisector",
+            "anglebisector", "pointon", "text",
+            "center", "eccentricity", "centroid", "closestpoint", "curvature", "roots");
 
     @Override
     public boolean has(String name) {
@@ -60,18 +103,42 @@ public final class GeoBuiltins implements BuiltinFunctions {
             case "line" -> line(args);
             case "segment" -> segment(args);
             case "circle" -> circle(args);
-            case "distance" -> distance(args);
+            case "distance" -> GeoMeasure.distance(args);
             case "plane" -> plane(args);
             case "sphere" -> sphere(args);
-            case "intersect" -> GeoIntersections.intersect(args);
+            case "intersect" -> GeoIntersections.intersect(args, applier);
             case "derivative" -> derivative(args);
             case "integral" -> integral(args, applier);
             case "tangent" -> tangent(args, applier);
             case "polygon" -> polygon(args);
-            case "angle" -> angle(args);
+            case "angle" -> GeoMeasure.angle(args);
             case "ellipse" -> conicFromFoci(args, "Ellipse", true);
             case "hyperbola" -> conicFromFoci(args, "Hyperbola", false);
             case "parabola" -> parabola(args);
+            case "root" -> GeoCalculus.root(args, applier);
+            case "extremum" -> GeoCalculus.extremum(args, applier);
+            case "inflectionpoint" -> GeoCalculus.inflection(args, applier);
+            case "normal" -> GeoCalculus.normal(args, applier);
+            case "length" -> GeoMeasure.length(args);
+            case "area" -> GeoMeasure.area(args);
+            case "perimeter" -> GeoMeasure.perimeter(args);
+            case "slope" -> GeoMeasure.slope(args);
+            case "reflect" -> GeoTransform.reflect(args);
+            case "rotate" -> GeoTransform.rotate(args);
+            case "translate" -> GeoTransform.translate(args);
+            case "dilate" -> GeoTransform.dilate(args);
+            case "perpendicularline" -> GeoConstruct.perpendicularLine(args);
+            case "parallelline" -> GeoConstruct.parallelLine(args);
+            case "perpendicularbisector" -> GeoConstruct.perpendicularBisector(args);
+            case "anglebisector" -> GeoConstruct.angleBisector(args);
+            case "pointon" -> GeoConstruct.pointOn(args);
+            case "center" -> GeoConicAnalysis.center(args);
+            case "eccentricity" -> GeoConicAnalysis.eccentricity(args);
+            case "centroid" -> GeoConicAnalysis.centroid(args);
+            case "closestpoint" -> GeoConicAnalysis.closestPoint(args);
+            case "curvature" -> GeoConicAnalysis.curvature(args, applier);
+            case "roots" -> GeoConicAnalysis.roots(args, applier);
+            case "text" -> text(args);
             default -> throw new EvalException("Unbekannte Funktion '" + name + "'.");
         };
     }
@@ -144,6 +211,11 @@ public final class GeoBuiltins implements BuiltinFunctions {
     }
 
     private static Value circle(List<Value> args) {
+        // Circle through three points (circumcircle).
+        if (args.size() == 3 && args.stream().allMatch(v -> v instanceof Value.PointV)) {
+            return GeoConicAnalysis.circleThrough(
+                    point(args.get(0), "Circle"), point(args.get(1), "Circle"), point(args.get(2), "Circle"));
+        }
         require(args, 2, "Circle");
         Value.PointV center = point(args.get(0), "Circle");
         if (center.is3D()) {
@@ -161,16 +233,6 @@ public final class GeoBuiltins implements BuiltinFunctions {
             throw new EvalException("Radius darf nicht negativ sein.");
         }
         return new Value.CircleV(center, r);
-    }
-
-    private static Value distance(List<Value> args) {
-        require(args, 2, "Distance");
-        Value.PointV a = point(args.get(0), "Distance");
-        Value.PointV b = point(args.get(1), "Distance");
-        double dx = b.x() - a.x();
-        double dy = b.y() - a.y();
-        double dz = b.z() - a.z();
-        return new Value.NumberV(Math.sqrt(dx * dx + dy * dy + dz * dz));
     }
 
     private static Value plane(List<Value> args) {
@@ -220,28 +282,22 @@ public final class GeoBuiltins implements BuiltinFunctions {
         return new Value.PolygonV(List.copyOf(verts));
     }
 
-    private static Value angle(List<Value> args) {
-        require(args, 3, "Angle");
-        Value.PointV a = point(args.get(0), "Angle");
-        Value.PointV b = point(args.get(1), "Angle");
-        Value.PointV c = point(args.get(2), "Angle");
-        double[] ba = {a.x() - b.x(), a.y() - b.y(), a.z() - b.z()};
-        double[] bc = {c.x() - b.x(), c.y() - b.y(), c.z() - b.z()};
-        double dot = ba[0] * bc[0] + ba[1] * bc[1] + ba[2] * bc[2];
-        double mag = Math.sqrt((ba[0] * ba[0] + ba[1] * ba[1] + ba[2] * ba[2])
-                * (bc[0] * bc[0] + bc[1] * bc[1] + bc[2] * bc[2]));
-        if (mag < 1e-12) {
-            throw new EvalException("Winkel nicht definiert (Punkte fallen zusammen).");
-        }
-        return new Value.NumberV(Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, dot / mag)))));
-    }
-
     private static Value conicFromFoci(List<Value> args, String where, boolean ellipse) {
         require(args, 3, where);
         Value.PointV f1 = point(args.get(0), where);
         Value.PointV f2 = point(args.get(1), where);
         double a = num(args.get(2));
         return ellipse ? GeoConics.ellipse(f1, f2, a) : GeoConics.hyperbola(f1, f2, a);
+    }
+
+    private static Value text(List<Value> args) {
+        if (args.isEmpty() || !(args.get(0) instanceof Value.TextV t)) {
+            throw new EvalException("Text erwartet einen Text in Anführungszeichen.");
+        }
+        if (args.size() == 2 && args.get(1) instanceof Value.PointV p) {
+            return new Value.TextV(t.text(), p);
+        }
+        return new Value.TextV(t.text(), null);
     }
 
     private static Value parabola(List<Value> args) {
@@ -265,19 +321,33 @@ public final class GeoBuiltins implements BuiltinFunctions {
     }
 
     private static Value integral(List<Value> args, FunctionApplier applier) {
-        require(args, 3, "Integral");
-        if (!(args.get(0) instanceof Value.FunctionV f) || f.params().size() != 1) {
-            throw new EvalException("Integral erwartet eine Funktion f(x) und Grenzen.");
+        if (args.isEmpty() || !(args.get(0) instanceof Value.FunctionV f) || f.params().size() != 1) {
+            throw new EvalException("Integral erwartet eine Funktion f(x).");
         }
-        double a = num(args.get(1));
-        double b = num(args.get(2));
+        // Integral(f): symbolic antiderivative (a function).
+        if (args.size() == 1) {
+            String var = f.params().get(0);
+            return new Value.FunctionV(f.params(), SymbolicIntegrator.integrate(f.body(), var));
+        }
+        // Integral(f, g, a, b): area between two curves on [a, b].
+        if (args.size() == 4 && args.get(1) instanceof Value.FunctionV g && g.params().size() == 1) {
+            double a = num(args.get(2));
+            double b = num(args.get(3));
+            return new Value.NumberV(simpson(applier, f, a, b) - simpson(applier, g, a, b));
+        }
+        // Integral(f, a, b): definite integral.
+        require(args, 3, "Integral");
+        return new Value.NumberV(simpson(applier, f, num(args.get(1)), num(args.get(2))));
+    }
+
+    private static double simpson(FunctionApplier applier, Value.FunctionV f, double a, double b) {
         int n = 1000;                       // even number of Simpson sub-intervals
         double h = (b - a) / n;
         double sum = sample(applier, f, a) + sample(applier, f, b);
         for (int i = 1; i < n; i++) {
             sum += (i % 2 == 0 ? 2 : 4) * sample(applier, f, a + i * h);
         }
-        return new Value.NumberV(sum * h / 3);
+        return sum * h / 3;
     }
 
     private static Value tangent(List<Value> args, FunctionApplier applier) {

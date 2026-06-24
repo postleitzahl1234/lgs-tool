@@ -501,6 +501,12 @@ public final class CoordinatePlane2D extends Pane {
             Color rowColor = baseHex != null ? Color.web(Palette.shade(baseHex, deltaL)) : colorFor(o, i);
             drawLine(g, w, h, new Value.LineV(a, b, c), rowColor);
         }
+        // Always show the system's unique solution (the common intersection) with its
+        // coordinates, so it tracks an animated parameter live.
+        double[] sol = de.lgstool.geo.expr.MatrixBuiltins.uniqueSolution(m.rows());
+        if (sol != null && sol.length == 2) {
+            markIntersection(g, w, h, sol[0], sol[1]);
+        }
     }
 
     private void drawText(GraphicsContext g, double w, double h, Value.TextV t, Color color) {

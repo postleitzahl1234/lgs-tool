@@ -170,6 +170,29 @@ public final class Scene3DView extends Pane {
                     : GeoPalette.color(o, i);
             addPlane(new Value.PlaneV(a, b, c, d), rowColor);
         }
+        // Always show the system's unique solution with its coordinates (tracks animation).
+        double[] sol = de.lgstool.geo.expr.MatrixBuiltins.uniqueSolution(m.rows());
+        if (sol != null && sol.length == 3) {
+            addSolutionMarker(sol[0], sol[1], sol[2]);
+        }
+    }
+
+    /** A highlighted dot plus a coordinate label at the system's unique solution. */
+    private void addSolutionMarker(double x, double y, double z) {
+        Sphere dot = new Sphere(4);
+        dot.setMaterial(new PhongMaterial(Color.web(Theme.ACCENT_PETROL)));
+        dot.setTranslateX(x * scale);
+        dot.setTranslateY(-y * scale);
+        dot.setTranslateZ(z * scale);
+        world.getChildren().add(dot);
+
+        Text label = new Text("(" + GeoFormat.num(x) + ", " + GeoFormat.num(y) + ", " + GeoFormat.num(z) + ")");
+        label.setFill(Color.web(Theme.ACCENT_PETROL));
+        label.setFont(Font.font(15));
+        label.setTranslateX(x * scale + 6);
+        label.setTranslateY(-y * scale - 6);
+        label.setTranslateZ(z * scale);
+        world.getChildren().add(label);
     }
 
     private void addPlane(Value.PlaneV plane, Color color) {

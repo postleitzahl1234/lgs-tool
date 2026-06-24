@@ -98,6 +98,34 @@ public final class MatrixBuiltins implements BuiltinFunctions {
         return new Value.ListV(basis.stream().<Value>map(MatrixBuiltins::column).toList());
     }
 
+    /**
+     * The unique solution of the augmented system {@code [A|b]} as doubles, or {@code null}
+     * if the system has no solution or infinitely many. Used by the views to show the live
+     * intersection point of a linear system (e.g. while an animated parameter changes).
+     */
+    public static double[] uniqueSolution(Fraction[][] aug) {
+        if (aug.length == 0 || aug[0].length < 2) {
+            return null;
+        }
+        int n = aug[0].length - 1;
+        Fraction[][] a = new Fraction[aug.length][n];
+        Fraction[] b = new Fraction[aug.length];
+        for (int r = 0; r < aug.length; r++) {
+            System.arraycopy(aug[r], 0, a[r], 0, n);
+            b[r] = aug[r][n];
+        }
+        Solution s = Gauss.solve(a, b);
+        if (s.kind() != Solution.Kind.UNIQUE) {
+            return null;
+        }
+        Fraction[] p = s.particular();
+        double[] sol = new double[n];
+        for (int i = 0; i < n; i++) {
+            sol[i] = p[i].doubleValue();
+        }
+        return sol;
+    }
+
     // ---- shared matrix maths (also used by Evaluator) --------------------
 
     static Fraction[][] add(Fraction[][] a, Fraction[][] b) {

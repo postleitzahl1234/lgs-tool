@@ -54,7 +54,9 @@ public final class GeoEngine {
     private static final Pattern SAVE = Pattern.compile("(?i)(?:save|speichern)\\s*\\(\\s*(\\w+)\\s*\\)");
     private static final Pattern LOAD = Pattern.compile("(?i)(?:load|laden)\\s*\\(\\s*(\\w+)\\s*\\)");
     private static final Pattern CREATE = Pattern.compile(
-            "(?i)(?:create|erstelle)\\s*\\(\\s*([A-Za-z][A-Za-z0-9_]*)\\s*,\\s*(\\d+)\\s*\\*\\s*(\\d+)\\s*\\)");
+            "(?i)(?:create|erstelle)\\s*\\(\\s*([A-Za-z][A-Za-z0-9_]*)\\s*,\\s*(\\d+)\\s*[*xX×]\\s*(\\d+)\\s*\\)");
+    /** Loose detector: anything starting with create(/erstelle( so a malformed call gets a clear error. */
+    private static final Pattern CREATE_CALL = Pattern.compile("(?is)\\s*(?:create|erstelle)\\s*\\(.*");
     private static final Pattern RAND = Pattern.compile(
             "(?i)(?:rand|zufall)\\s*\\(\\s*(?:([A-Za-z][A-Za-z0-9_]*)\\s*,\\s*)?(-?\\d+)\\s*,\\s*(-?\\d+)\\s*\\)");
 
@@ -132,6 +134,9 @@ public final class GeoEngine {
         if (create.matches()) {
             return createMatrix(create.group(1),
                     Integer.parseInt(create.group(2)), Integer.parseInt(create.group(3)));
+        }
+        if (CREATE_CALL.matcher(s).matches()) {
+            return GeoResult.error(I18n.t("geo.createSize"));   // create(...) but malformed -> show usage
         }
         Matcher rand = RAND.matcher(s);
         if (rand.matches()) {

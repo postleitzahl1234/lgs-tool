@@ -55,6 +55,19 @@ class ImplicitAndStatsTest {
     }
 
     @Test
+    @DisplayName("A linear equation in z is a 3D plane (x + y + z = 1)")
+    void linearEquationInZIsPlane() {
+        ok("x + y + z = 1");
+        Value v = engine.construction().objects().get(0).value();
+        assertInstanceOf(Value.PlaneV.class, v);
+        Value.PlaneV p = (Value.PlaneV) v;
+        assertEquals(1.0, p.a(), 1e-9);
+        assertEquals(1.0, p.b(), 1e-9);
+        assertEquals(1.0, p.c(), 1e-9);
+        assertEquals(1.0, p.d(), 1e-9);
+    }
+
+    @Test
     @DisplayName("An equation through a user function f(x^2, y^2) = 1 is implicit")
     void implicitViaFunction() {
         ok("f(a, b) = a + b");

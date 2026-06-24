@@ -6,10 +6,12 @@ import de.lgstool.geo.expr.CasBuiltins;
 import de.lgstool.geo.expr.ComplexBuiltins;
 import de.lgstool.geo.expr.CompositeBuiltins;
 import de.lgstool.geo.expr.EvalException;
+import de.lgstool.geo.expr.Evaluator;
 import de.lgstool.geo.expr.Expr;
 import de.lgstool.geo.expr.ListBuiltins;
 import de.lgstool.geo.expr.MathBuiltins;
 import de.lgstool.geo.expr.MatrixBuiltins;
+import de.lgstool.geo.expr.NameResolver;
 import de.lgstool.geo.expr.Parser;
 import de.lgstool.geo.expr.StatsBuiltins;
 import de.lgstool.geo.expr.Value;
@@ -154,10 +156,10 @@ public final class GeoEngine {
             return defineFunction(fn.group(1), splitParams(fn.group(2)), right);
         }
         // A plain identifier on the left is an assignment — unless it is a plotting
-        // variable x/y (not already an object) and the right side actually uses x or y,
-        // in which case "y = x^2" is an implicit curve (GeoGebra-style). "y = 4" stays a
-        // plain assignment so existing number/object semantics are preserved.
-        boolean reservedPlotVar = (left.equals("x") || left.equals("y"))
+        // variable x/y/z (not already an object) and the right side actually uses a plot
+        // variable, in which case "y = x^2" is a curve and "z = x + y" is a plane
+        // (GeoGebra-style). "y = 4" stays a plain assignment (number) so existing semantics hold.
+        boolean reservedPlotVar = (left.equals("x") || left.equals("y") || left.equals("z"))
                 && !construction.contains(left) && referencesPlotVar(right);
         if (IDENT.matcher(left).matches() && !reservedPlotVar) {
             Expr ast = Parser.parse(right);
@@ -178,20 +180,64 @@ public final class GeoEngine {
         return defineImplicit(left, right);
     }
 
-    /** Builds an implicit curve {@code LHS - RHS = 0} (must involve the plot variables x/y). */
+    /**
+     * Builds the geometric object for an equation {@code LHS = RHS}. An equation that is
+     * linear and involves {@code z} becomes a 3D plane; otherwise it is an implicit curve
+     * in x/y (drawn in 2D). Must involve at least one plot variable x/y/z.
+     */
     private GeoResult defineImplicit(String left, String right) {
         Expr lhs = Parser.parse(left);
         Expr rhs = Parser.parse(right);
         Expr diff = new Expr.Bin('-', lhs, rhs);
         Set<String> names = new HashSet<>();
         Expr.collectNames(diff, names);
-        if (!names.contains("x") && !names.contains("y")) {
+        if (!names.contains("x") && !names.contains("y") && !names.contains("z")) {
             return GeoResult.error(I18n.t("geo.notEquationXY"));
         }
-        snapshot();
         String label = left + " = " + right;
+        // A linear equation that uses z is a plane a·x + b·y + c·z = d (shown in 3D).
+        if (names.contains("z")) {
+            Value.PlaneV plane = asPlane(diff);
+            if (plane != null) {
+                snapshot();
+                return committed(construction.defineLiteral(autoName(false), label, plane));
+            }
+        }
+        snapshot();
         GeoObject obj = construction.defineLiteral(autoName(false), label, new Value.ImplicitV(diff, label));
         return committed(obj);
+    }
+
+    /** Extracts a plane from {@code diff = a·x + b·y + c·z + e}; null if not linear in x,y,z. */
+    private Value.PlaneV asPlane(Expr diff) {
+        double e = sampleXYZ(diff, 0, 0, 0);
+        double a = sampleXYZ(diff, 1, 0, 0) - e;
+        double b = sampleXYZ(diff, 0, 1, 0) - e;
+        double c = sampleXYZ(diff, 0, 0, 1) - e;
+        double probe = sampleXYZ(diff, 2, 3, 5);
+        double predicted = e + 2 * a + 3 * b + 5 * c;
+        boolean linear = Double.isFinite(e) && Double.isFinite(a) && Double.isFinite(b) && Double.isFinite(c)
+                && Double.isFinite(probe) && Math.abs(probe - predicted) < 1e-7;
+        if (!linear || (Math.abs(a) < 1e-12 && Math.abs(b) < 1e-12 && Math.abs(c) < 1e-12)) {
+            return null;
+        }
+        return new Value.PlaneV(a, b, c, -e);   // a·x + b·y + c·z = -e
+    }
+
+    /** Evaluates an expression with x, y, z bound to the given values (NaN on failure). */
+    private double sampleXYZ(Expr e, double x, double y, double z) {
+        NameResolver scope = name -> switch (name) {
+            case "x" -> new Value.NumberV(x);
+            case "y" -> new Value.NumberV(y);
+            case "z" -> new Value.NumberV(z);
+            default -> construction.valueOf(name);
+        };
+        try {
+            return new Evaluator(scope, construction.builtins()).eval(e) instanceof Value.NumberV n
+                    ? n.v() : Double.NaN;
+        } catch (RuntimeException ex) {
+            return Double.NaN;
+        }
     }
 
     /** Whether an expression source references the plot variables x or y (parse-tolerant). */

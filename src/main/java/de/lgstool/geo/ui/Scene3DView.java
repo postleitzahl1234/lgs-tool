@@ -4,10 +4,13 @@ import de.lgstool.config.Theme;
 import de.lgstool.geo.command.GeoEngine;
 import de.lgstool.geo.expr.Expr;
 import de.lgstool.geo.expr.Value;
+import de.lgstool.geo.command.GeoFormat;
 import de.lgstool.geo.model.Construction;
 import de.lgstool.geo.model.GeoObject;
 import de.lgstool.geo.model.Palette;
+import java.util.ArrayList;
 import java.util.List;
+import javafx.geometry.Point2D;
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
@@ -43,9 +46,17 @@ public final class Scene3DView extends Pane {
     private final Rotate rotateX = new Rotate(24, Rotate.X_AXIS);
     private final Rotate rotateY = new Rotate(-32, Rotate.Y_AXIS);
 
+    private static final int MAX_PLANES_FOR_CROSSINGS = 12;   // cap C(n,3) work
+    private static final double CROSSING_HOVER_RADIUS = 22;   // screen px
+
     private double scale = 36;
     private double dragX;
     private double dragY;
+
+    // Triple-plane intersection points: marker nodes + their world coordinates (parallel lists).
+    private final List<Sphere> crossingNodes = new ArrayList<>();
+    private final List<double[]> crossingPoints = new ArrayList<>();
+    private Text hoverLabel;
 
     public Scene3DView(GeoEngine engine) {
         this.engine = engine;
@@ -103,6 +114,8 @@ public final class Scene3DView extends Pane {
                 }
             }
         }
+        hoverLabel = null;   // cleared with the world above
+        addCrossings();
     }
 
     // ---- layout ----------------------------------------------------------
@@ -303,6 +316,107 @@ public final class Scene3DView extends Pane {
         world.getChildren().add(label);
     }
 
+    // ---- plane intersection points + hover coordinates -------------------
+
+    /** Marks each triple-plane intersection point with a small dot (coords shown on hover). */
+    private void addCrossings() {
+        crossingNodes.clear();
+        crossingPoints.clear();
+        List<double[]> planes = collectPlanes();
+        if (planes.size() < 3 || planes.size() > MAX_PLANES_FOR_CROSSINGS) {
+            return;   // need 3 planes for a point; cap the O(n³) enumeration
+        }
+        for (int i = 0; i < planes.size(); i++) {
+            for (int j = i + 1; j < planes.size(); j++) {
+                for (int k = j + 1; k < planes.size(); k++) {
+                    double[] p = intersect3(planes.get(i), planes.get(j), planes.get(k));
+                    if (p != null) {
+                        addCrossingMarker(p);
+                    }
+                }
+            }
+        }
+    }
+
+    private void addCrossingMarker(double[] p) {
+        Sphere dot = new Sphere(3.2);
+        dot.setMaterial(new PhongMaterial(Color.web(Theme.ACCENT_PETROL)));
+        dot.setTranslateX(p[0] * scale);
+        dot.setTranslateY(-p[1] * scale);
+        dot.setTranslateZ(p[2] * scale);
+        world.getChildren().add(dot);
+        crossingNodes.add(dot);
+        crossingPoints.add(p);
+    }
+
+    private List<double[]> collectPlanes() {
+        List<double[]> planes = new ArrayList<>();
+        for (GeoObject o : engine.construction().objects()) {
+            if (!o.isVisible() || !o.isDefined()) {
+                continue;
+            }
+            if (o.value() instanceof Value.PlaneV pl) {
+                planes.add(new double[]{pl.a(), pl.b(), pl.c(), pl.d()});
+            } else if (o.value() instanceof Value.MatrixV m && m.colCount() == 4) {
+                for (int i = 0; i < m.rowCount(); i++) {
+                    planes.add(new double[]{m.rows()[i][0].doubleValue(), m.rows()[i][1].doubleValue(),
+                            m.rows()[i][2].doubleValue(), m.rows()[i][3].doubleValue()});
+                }
+            }
+        }
+        return planes;
+    }
+
+    /** Unique point of three planes {@code a·x+b·y+c·z=d}; null if (near-)singular (parallel/line). */
+    private static double[] intersect3(double[] p1, double[] p2, double[] p3) {
+        double det = det3(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2], p3[0], p3[1], p3[2]);
+        if (Math.abs(det) < 1e-9) {
+            return null;
+        }
+        double x = det3(p1[3], p1[1], p1[2], p2[3], p2[1], p2[2], p3[3], p3[1], p3[2]) / det;
+        double y = det3(p1[0], p1[3], p1[2], p2[0], p2[3], p2[2], p3[0], p3[3], p3[2]) / det;
+        double z = det3(p1[0], p1[1], p1[3], p2[0], p2[1], p2[3], p3[0], p3[1], p3[3]) / det;
+        return new double[]{x, y, z};
+    }
+
+    private static double det3(double a, double b, double c, double d, double e, double f,
+            double g, double h, double i) {
+        return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+    }
+
+    /** Shows the coordinates of the nearest crossing point when the cursor is close (screen space). */
+    private void updateCrossingLabel(double screenX, double screenY) {
+        if (hoverLabel != null) {
+            world.getChildren().remove(hoverLabel);
+            hoverLabel = null;
+        }
+        double best = CROSSING_HOVER_RADIUS;
+        int bestIdx = -1;
+        for (int idx = 0; idx < crossingNodes.size(); idx++) {
+            Point2D s = crossingNodes.get(idx).localToScreen(0, 0, 0);
+            if (s == null) {
+                continue;
+            }
+            double d = Math.hypot(s.getX() - screenX, s.getY() - screenY);
+            if (d <= best) {
+                best = d;
+                bestIdx = idx;
+            }
+        }
+        if (bestIdx >= 0) {
+            double[] p = crossingPoints.get(bestIdx);
+            Text label = new Text("(" + GeoFormat.num(p[0]) + ", " + GeoFormat.num(p[1])
+                    + ", " + GeoFormat.num(p[2]) + ")");
+            label.setFill(Color.web(Theme.ACCENT_PETROL));
+            label.setFont(Font.font(15));
+            label.setTranslateX(p[0] * scale + 6);
+            label.setTranslateY(-p[1] * scale - 6);
+            label.setTranslateZ(p[2] * scale);
+            world.getChildren().add(label);
+            hoverLabel = label;
+        }
+    }
+
     // ---- interaction -----------------------------------------------------
 
     private void installMouseHandlers() {
@@ -310,6 +424,7 @@ public final class Scene3DView extends Pane {
             dragX = e.getX();
             dragY = e.getY();
         });
+        subScene.setOnMouseMoved(e -> updateCrossingLabel(e.getScreenX(), e.getScreenY()));
         subScene.setOnMouseDragged(e -> {
             rotateY.setAngle(rotateY.getAngle() + (e.getX() - dragX) * 0.4);
             rotateX.setAngle(rotateX.getAngle() - (e.getY() - dragY) * 0.4);

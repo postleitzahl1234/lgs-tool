@@ -35,6 +35,8 @@ public final class CoordinatePlane2D extends Pane {
 
     private static final double HIT_RADIUS = 10;
     private static final int SAMPLES = 400;
+    private static final double INTERSECT_HOVER_RADIUS = 16;   // px: show a crossing's coords within this
+    private static final double EPS = 1e-9;
 
     private final GeoEngine engine;
     private final Canvas canvas = new Canvas();
@@ -45,6 +47,8 @@ public final class CoordinatePlane2D extends Pane {
     private double vy1 = 6;
 
     private boolean panning;
+    private double hoverX = -1;   // current mouse position (screen px); -1 = not hovering
+    private double hoverY = -1;
     private String dragName;
     private double pressX;
     private double pressY;
@@ -97,6 +101,7 @@ public final class CoordinatePlane2D extends Pane {
         correctAspect(w, h);
         drawGrid(g, w, h);
         drawObjects(g, w, h);
+        drawIntersectionHover(g, w, h);
     }
 
     // ---- layout ----------------------------------------------------------
@@ -510,6 +515,79 @@ public final class CoordinatePlane2D extends Pane {
         return GeoPalette.color(o, index);
     }
 
+    // ---- intersection coordinates on hover -------------------------------
+
+    /**
+     * When the cursor is near a line–line crossing, shows that point's coordinates. Lines
+     * come from {@code LineV} objects and from 2-variable systems (3-column matrices).
+     * Parallel/identical lines have no unique point and are skipped.
+     */
+    private void drawIntersectionHover(GraphicsContext g, double w, double h) {
+        if (hoverX < 0) {
+            return;
+        }
+        List<double[]> lines = collectLines();
+        double bestDist = INTERSECT_HOVER_RADIUS;
+        double[] best = null;
+        for (int i = 0; i < lines.size(); i++) {
+            for (int j = i + 1; j < lines.size(); j++) {
+                double[] p = intersectLines(lines.get(i), lines.get(j));
+                if (p == null) {
+                    continue;   // parallel or identical -> no single point
+                }
+                double dist = Math.hypot(sx(p[0], w) - hoverX, sy(p[1], h) - hoverY);
+                if (dist <= bestDist) {
+                    bestDist = dist;
+                    best = p;
+                }
+            }
+        }
+        if (best != null) {
+            markIntersection(g, w, h, best[0], best[1]);
+        }
+    }
+
+    private List<double[]> collectLines() {
+        List<double[]> lines = new ArrayList<>();
+        for (GeoObject o : engine.construction().objects()) {
+            if (!o.isVisible() || !o.isDefined()) {
+                continue;
+            }
+            if (o.value() instanceof Value.LineV l) {
+                lines.add(new double[]{l.a(), l.b(), l.c()});
+            } else if (o.value() instanceof Value.MatrixV m && m.colCount() == 3) {
+                for (int i = 0; i < m.rowCount(); i++) {
+                    lines.add(new double[]{m.rows()[i][0].doubleValue(),
+                            m.rows()[i][1].doubleValue(), m.rows()[i][2].doubleValue()});
+                }
+            }
+        }
+        return lines;
+    }
+
+    /** Solves a1·x + b1·y = c1 and a2·x + b2·y = c2; null if (near-)parallel. */
+    private static double[] intersectLines(double[] l1, double[] l2) {
+        double det = l1[0] * l2[1] - l2[0] * l1[1];
+        if (Math.abs(det) < EPS) {
+            return null;
+        }
+        double x = (l1[2] * l2[1] - l2[2] * l1[1]) / det;
+        double y = (l1[0] * l2[2] - l2[0] * l1[2]) / det;
+        return new double[]{x, y};
+    }
+
+    private void markIntersection(GraphicsContext g, double w, double h, double x, double y) {
+        double px = sx(x, w);
+        double py = sy(y, h);
+        g.setFill(Color.web(Theme.ACCENT_PETROL));
+        g.fillOval(px - 4, py - 4, 8, 8);
+        g.setStroke(Color.web(Theme.BACKGROUND));
+        g.setLineWidth(1.4);
+        g.strokeOval(px - 4, py - 4, 8, 8);
+        g.setFont(Font.font("Consolas", FontWeight.BOLD, 12));
+        haloLabel(g, "(" + trim(x) + ", " + trim(y) + ")", px + 9, py - 7, Color.web(Theme.ACCENT_PETROL));
+    }
+
     // ---- interaction -----------------------------------------------------
 
     private void installMouseHandlers() {
@@ -553,6 +631,21 @@ public final class CoordinatePlane2D extends Pane {
         canvas.setOnMouseReleased(e -> {
             dragName = null;
             panning = false;
+        });
+        canvas.setOnMouseMoved(e -> {
+            hoverX = e.getX();
+            hoverY = e.getY();
+            if (collectLines().size() >= 2) {   // only repaint when a crossing is possible
+                redraw();
+            }
+        });
+        canvas.setOnMouseExited(e -> {
+            boolean wasHovering = hoverX >= 0;
+            hoverX = -1;
+            hoverY = -1;
+            if (wasHovering && collectLines().size() >= 2) {
+                redraw();
+            }
         });
         canvas.setOnScroll(e -> zoom(e.getDeltaY() > 0 ? 1.1 : 1 / 1.1));
     }

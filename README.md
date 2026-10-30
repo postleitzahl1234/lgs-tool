@@ -1,101 +1,85 @@
 # LGS-Tool
 
-Ein JavaFX-Werkzeug zum Lösen **linearer Gleichungssysteme** (LGS) mit
-**exakter Bruch-Arithmetik** und **1D/2D/3D-Visualisierung**. Bedienung über eine
-eigene Befehlssprache (`befehl(argumente);`).
+*English · [Deutsch](README.de.md)*
 
-- **Exakt:** alle Rechnungen mit `BigInteger`-Brüchen; Dezimalzahlen werden exakt
-  gespeichert (`1.2 = 6/5`).
-- **Lösung:** eindeutig, **unendlich viele** (parametrisierte allgemeine Lösung,
-  z. B. `x = 2 − 3t, y = t (frei)`) oder keine Lösung.
-- **Visualisierung:** Zahlengerade (1 Variable), Geraden + Schnittpunkt
-  (2 Variablen), Ebenen im Raum (3 Variablen). Ab 4 Variablen ein Hinweis.
-- **Portabel:** als eigenständige Windows-App ohne jede Installation lauffähig.
+A JavaFX desktop app for solving **systems of linear equations** with **exact fraction
+arithmetic** and **1D/2D/3D visualization**, driven by its own small command language
+(`command(arguments);`). *LGS* is German for *lineares Gleichungssystem*.
 
-Die vollständige Spezifikation steht in [`befehle.md`](befehle.md).
+## Features
 
-## Schnellstart (fertige App)
+- **Exact:** every calculation uses `BigInteger` fractions; decimals are stored exactly (`1.2 = 6/5`).
+- **Every solution case:** unique, **infinitely many** (parametrized general solution such as
+  `x = 2 − 3t, y = t (free)`) or none.
+- **Step by step:** `solve(n)` shows the first *n* Gaussian elimination steps.
+- **Analysis:** determinant, rank of A and A|b, condition number, inverse, verification.
+- **Visualization:** number line (1 variable), lines and intersection (2), planes in space (3).
+- **Geometry & CAS module:** expression parser, derivatives, conic sections, LaTeX export.
+- **Undo** (about 50 steps), save/load in a plain-text `.lgs` format.
+- **Portable:** ships as a self-contained Windows app, with no Java install needed.
 
-`target\dist\LGSTool\LGSTool.exe` doppelklicken. Es wird **kein** installiertes
-Java oder JavaFX benötigt — Laufzeit ist eingebettet. Den Ordner
-`target\dist\LGSTool\` kann man zippen und auf jeden Windows-PC kopieren.
+## Quick start
 
-## Erste Schritte (im Programm)
+Download the Windows ZIP from **Releases**, unzip it and double-click `LGSTool.exe`.
 
-Im Hauptbildschirm unten ist die Befehlszeile `[HAUPT]`:
+In the main window's `[HAUPT]` command line:
 
 ```
-create(test, 2*2);     # erzeugt ein LGS mit 2 Variablen, 2 Zeilen + Button
-open(test);            # öffnet das Detailfenster
+create(test, 2*2);     # new system: 2 variables, 2 rows
+open(test);            # open its detail window
 ```
 
-Im Detailfenster `[LGS]`:
+In the detail window's `[LGS]` command line:
 
 ```
 add(1 1 = 3);          # x + y = 3
 add(1 -1 = 1);         # x − y = 1
-solve();               # → x = 2, y = 1   (mit Schnittpunkt im Koordinatensystem)
-solve(3);              # mit 3 vorgerechneten Schritten
+solve();               # → x = 2, y = 1, intersection drawn in the plot
+solve(3);              # show 3 elimination steps first
 det();  rank();  cond();  inverse();  verify();
 ```
 
-Werte lassen sich auch **direkt in der Matrix anklicken** und bearbeiten. Große
-Systeme verschiebt man mit der Maus.
+Matrix cells can also be edited by clicking them. The full command reference (German) is in
+[`befehle.md`](befehle.md).
 
-## Entwicklung
+## Build from source
 
-Voraussetzung: **JDK ≥ 21** (entwickelt/getestet mit **JDK 25 LTS**).
-Maven wird über den **Wrapper** `mvnw` automatisch geladen — keine Maven-Installation nötig.
+Requires **JDK 25**. Maven is downloaded by the wrapper, so no Maven install is needed.
 
 ```powershell
-.\mvnw.cmd test            # Unit-Tests (Mathematik, Modell, Befehle, Persistenz)
-.\mvnw.cmd javafx:run      # App im Entwicklungsmodus starten
+.\mvnw.cmd test            # unit tests (math, model, commands, persistence, geometry)
+.\mvnw.cmd javafx:run      # run in development mode
+.\build-portable.ps1       # build target\dist\LGSTool\LGSTool.exe (Windows x64, ~90 MB)
 ```
 
-Setze ggf. `JAVA_HOME` auf dein JDK 25 (z. B. `C:\Program Files\Java\jdk-25`).
-
-Interner UI-Rauchtest (baut die Oberfläche, rendert 1D/2D/3D, prüft alle Pfade):
+UI smoke test (builds the interface, renders 1D/2D/3D):
 
 ```powershell
 .\mvnw.cmd -DskipTests package javafx:jlink
-.\target\lgstool-runtime\bin\java.exe -m de.lgstool/de.lgstool.App --selftest
-# erwartet: "SELFTEST OK"
+.\target\lgstool-runtime\bin\java.exe -m de.lgstool/de.lgstool.App --selftest   # expects "SELFTEST OK"
 ```
 
-## Portable App bauen
+More detail in [HOWTO-RUN.md](HOWTO-RUN.md).
 
-```powershell
-.\build-portable.ps1
-# Ergebnis: target\dist\LGSTool\LGSTool.exe (~90 MB, alles eingebettet)
-```
-
-Eine portable App ist **pro Betriebssystem** zu bauen (`jpackage` erzeugt für das
-System, auf dem es läuft). Dieses Skript erzeugt die **Windows-x64**-Variante.
-
-## Architektur
+## Architecture
 
 ```
 de.lgstool
-├── math/     Fraction, FractionMatrix, Gauss (RREF/Det/Rang/Inverse/parametrische Lösung),
-│             ConditionNumber, Solution, Roman
-├── model/    Lgs, AppState, UndoManager (mehrstufiges Undo, ~50 Schritte)
-├── command/  CommandParser, CommandEngine (alle 28 Befehle), UiBridge, CommandContext
-├── io/       LgsStorage (.lgs-Textformat speichern/laden)
-├── viz/      Visualization (1D/2D-Canvas, 3D-SubScene, Zoom/Pan/Highlight/Animation)
-├── ui/       AppController, MainScreen, LgsWindow, MatrixView, CommandBar, LogPane,
-│             Glossary-/Settings-/NewLgs-Dialoge
-├── config/   Theme (Farben), Settings
-└── App, SelfTest
+├── math/     Fraction, FractionMatrix, Gauss (RREF / det / rank / inverse / parametric solution)
+├── model/    Lgs, AppState, UndoManager
+├── command/  CommandParser, CommandEngine, UiBridge
+├── geo/      geometry & CAS module (expression parser, calculus, conics, LaTeX)
+├── io/       LgsStorage (.lgs text format)
+├── viz/      1D/2D canvas, 3D SubScene, zoom / pan / highlight
+├── ui/       windows, matrix view, command bar, log, dialogs
+└── config/   theme, settings, i18n
 ```
 
-Die gesamte Logik (`math`, `model`, `command`, `io`) ist **UI-frei** und durch
-Unit-Tests abgedeckt; JavaFX-Effekte laufen über die `UiBridge`-Schnittstelle.
+All logic in `math`, `model`, `command` and `io` is UI-free and covered by unit tests;
+JavaFX effects go through the `UiBridge` interface.
 
-## Farben (aus der Präsentation)
+## License & credits
 
-| Rolle | Hex |
-|------|-----|
-| Hintergrund | `#E8E6DF` |
-| Akzent Petrol | `#1F5E63` |
-| Akzent Salbeigrün | `#8FAF9A` |
-| Text | `#1A1A1A` |
+MIT, see [LICENSE](LICENSE).
+
+Built with AI assistance (Claude). The concept, the command-language design and testing are mine.

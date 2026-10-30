@@ -14,7 +14,7 @@ installed. To move it to another PC, zip the whole `target\dist\LGSTool\` folder
 and copy it over, then double-click `LGSTool.exe`.
 
 ### Option 2 — Run from source (development)
-Requires a JDK ≥ 21 (built with JDK 25). Maven is fetched automatically by the
+Requires JDK 25 (the build targets `release 25`). Maven is fetched automatically by the
 wrapper — no Maven install needed.
 
 ```powershell
@@ -71,7 +71,7 @@ Zum Mitnehmen den ganzen Ordner `target\dist\LGSTool\` zippen, kopieren und dort
 `LGSTool.exe` doppelklicken.
 
 ### Variante 2 — Aus dem Quellcode starten (Entwicklung)
-Benötigt ein JDK ≥ 21 (entwickelt mit JDK 25). Maven wird über den Wrapper
+Benötigt JDK 25 (der Build zielt auf `release 25`). Maven wird über den Wrapper
 automatisch geladen.
 
 ```powershell
